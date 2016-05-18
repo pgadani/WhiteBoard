@@ -30,7 +30,7 @@ window.onload = function() {
 				canvasX = e.pageX - canvas.offsetLeft;
 				canvasY = e.pageY - canvas.offsetTop;
 				ctx.lineTo(canvasX, canvasY);
-				ctx.strokeStyle = "#000";
+				//ctx.strokeStyle = "#000";
 				ctx.stroke();
 			}
 		})
@@ -57,7 +57,7 @@ window.onload = function() {
 					evt.touches[0].pageX,
 					evt.touches[0].pageY
 				);
-				ctx.strokeStyle = "#000";
+				//ctx.strokeStyle = "#000";
 				ctx.lineWidth = 5;
 				ctx.stroke();
 			}
@@ -76,7 +76,10 @@ window.onload = function() {
 	document.body.addEventListener('touchmove',function(evt){
 		evt.preventDefault();
 	},false);
+	paletteInit();
+};
 
+function paletteInit() {
 	$("#color").spectrum({
 		color: "#000000",
 		showInput: true,
@@ -96,7 +99,9 @@ window.onload = function() {
 		},
 		hide: function () {
 		},
-		change: function() {
+		change: function(color) {
+			ctx = document.getElementById("board").getContext("2d");
+			ctx.strokeStyle = color.toRgbString();
 		},
 		palette: [
 			["rgb(0, 0, 0)", "rgb(67, 67, 67)", "rgb(102, 102, 102)",
@@ -115,5 +120,4 @@ window.onload = function() {
 			"rgb(12, 52, 61)", "rgb(28, 69, 135)", "rgb(7, 55, 99)", "rgb(32, 18, 77)", "rgb(76, 17, 48)"]
 		]
 	});
-
-};
+}
