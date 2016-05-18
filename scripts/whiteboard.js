@@ -46,16 +46,16 @@ window.onload = function() {
 		start: function(evt) {
 			ctx.beginPath();
 			ctx.moveTo(
-				evt.touches[0].pageX,
-				evt.touches[0].pageY
+				evt.touches[0].pageX - canvas.offsetLeft,
+				evt.touches[0].pageY - canvas.offsetTop
 			);
 			this.started = true;
 		},
 		move: function(evt) {
 			if (this.started) {
 				ctx.lineTo(
-					evt.touches[0].pageX,
-					evt.touches[0].pageY
+					evt.touches[0].pageX - canvas.offsetLeft,
+					evt.touches[0].pageY - canvas.offsetTop
 				);
 				//ctx.strokeStyle = "#000";
 				ctx.lineWidth = 5;
