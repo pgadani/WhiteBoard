@@ -10,6 +10,7 @@ window.onload = function() {
 	// Set Background Color
 	ctx.fillStyle="#fff";
 	ctx.fillRect(0,0,canvas.width,canvas.height);
+	ctx.fillStyle="#000";
 
 	// Mouse Event Handlers
 	if (canvas) {
@@ -43,10 +44,9 @@ window.onload = function() {
 			if (isMoved) {
 				ctx.closePath();
 			}
-			else { // supposed to be for drawing something when the mouse is clicked but not moved
-				ctx.rect(canvasX, canvasY, 5, 5); //currently debugging this
+			else {
+				ctx.rect(canvasX-ctx.lineWidth/2, canvasY-ctx.lineWidth/2, ctx.lineWidth, ctx.lineWidth);
 				ctx.fill();
-				console.log("here");
 			}
 		});
 	}
@@ -113,6 +113,7 @@ function paletteInit() {
 		change: function(color) {
 			ctx = document.getElementById("board").getContext("2d");
 			ctx.strokeStyle = color.toRgbString();
+			ctx.fillStyle = color.toRgbString();
 		},
 		palette: [
 			["rgb(0, 0, 0)", "rgb(67, 67, 67)", "rgb(102, 102, 102)",
