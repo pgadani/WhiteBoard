@@ -1,6 +1,15 @@
 .full-spectrum .sp-palette {
 	max-width: 200px;
 }
+
 #board {
 	cursor: crosshair;
+}
+
+input {
+	border: 2px solid gray;
+	border-radius: 4px;
+	width: 40px;
+	height: 25px;
+	font-size: 18px;
 }

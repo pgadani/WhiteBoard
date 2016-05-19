@@ -15,11 +15,12 @@ window.onload = function() {
 	if (canvas) {
 		var isDown = false;
 		var canvasX, canvasY;
-		ctx.lineWidth = 5;
+		ctx.lineWidth = document.getElementById("strokeSize").valu;
 
 		$(canvas)
 		.mousedown(function(e){
 			isDown = true;
+			ctx.lineWidth = document.getElementById("strokeSize").value
 			ctx.beginPath();
 			canvasX = e.pageX - canvas.offsetLeft;
 			canvasY = e.pageY - canvas.offsetTop;
