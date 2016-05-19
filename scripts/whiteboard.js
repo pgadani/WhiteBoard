@@ -14,12 +14,14 @@ window.onload = function() {
 	// Mouse Event Handlers
 	if (canvas) {
 		var isDown = false;
+		var isMoved = false;
 		var canvasX, canvasY;
-		ctx.lineWidth = document.getElementById("strokeSize").valu;
+		ctx.lineWidth = document.getElementById("strokeSize").value;
 
 		$(canvas)
 		.mousedown(function(e){
 			isDown = true;
+			isMoved = false;
 			ctx.lineWidth = document.getElementById("strokeSize").value
 			ctx.beginPath();
 			canvasX = e.pageX - canvas.offsetLeft;
@@ -28,6 +30,7 @@ window.onload = function() {
 		})
 		.mousemove(function(e){
 			if(isDown !== false) {
+				isMoved = true;
 				canvasX = e.pageX - canvas.offsetLeft;
 				canvasY = e.pageY - canvas.offsetTop;
 				ctx.lineTo(canvasX, canvasY);
@@ -37,7 +40,14 @@ window.onload = function() {
 		})
 		.mouseup(function(e){
 			isDown = false;
-			ctx.closePath();
+			if (isMoved) {
+				ctx.closePath();
+			}
+			else { // supposed to be for drawing something when the mouse is clicked but not moved
+				ctx.rect(canvasX, canvasY, 5, 5); //currently debugging this
+				ctx.fill();
+				console.log("here");
+			}
 		});
 	}
 
@@ -59,7 +69,7 @@ window.onload = function() {
 					evt.touches[0].pageY - canvas.offsetTop
 				);
 				//ctx.strokeStyle = "#000";
-				ctx.lineWidth = 5;
+				ctx.lineWidth = document.getElementById("strokeSize").value;
 				ctx.stroke();
 			}
 		},
