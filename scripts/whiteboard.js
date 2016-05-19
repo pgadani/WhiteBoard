@@ -12,11 +12,14 @@ window.onload = function() {
 	ctx.fillRect(0,0,canvas.width,canvas.height);
 	ctx.fillStyle="#000";
 
+	var path = new Path2D();
+
 	// Mouse Event Handlers
 	if (canvas) {
 		var isDown = false;
 		var isMoved = false;
 		var canvasX, canvasY;
+		var prevX, prevY;
 		ctx.lineWidth = document.getElementById("strokeSize").value;
 
 		$(canvas)
@@ -24,9 +27,12 @@ window.onload = function() {
 			isDown = true;
 			isMoved = false;
 			ctx.lineWidth = document.getElementById("strokeSize").value
-			ctx.beginPath();
+			// ctx.beginPath();
 			canvasX = e.pageX - canvas.offsetLeft;
 			canvasY = e.pageY - canvas.offsetTop;
+			prevX = canvasX;
+			prevY = canvasY;
+			path.moveTo(canvasX, canvasY);
 			ctx.moveTo(canvasX, canvasY);
 		})
 		.mousemove(function(e){
@@ -34,19 +40,25 @@ window.onload = function() {
 				isMoved = true;
 				canvasX = e.pageX - canvas.offsetLeft;
 				canvasY = e.pageY - canvas.offsetTop;
+				ctx.beginPath();
+				ctx.moveTo(prevX, prevY);
 				ctx.lineTo(canvasX, canvasY);
 				//ctx.strokeStyle = "#000";
 				ctx.stroke();
+				path.lineTo(canvasX, canvasY);
+				prevX = canvasX;
+				prevY = canvasY;
 			}
 		})
 		.mouseup(function(e){
 			isDown = false;
 			if (isMoved) {
 				ctx.closePath();
+				ctx.strokeStyle="#fff";
+				ctx.stroke(path);
 			}
 			else {
-				ctx.rect(canvasX-ctx.lineWidth/2, canvasY-ctx.lineWidth/2, ctx.lineWidth, ctx.lineWidth);
-				ctx.fill();
+				ctx.fillRect(canvasX-ctx.lineWidth/2, canvasY-ctx.lineWidth/2, ctx.lineWidth, ctx.lineWidth);
 			}
 		});
 	}
