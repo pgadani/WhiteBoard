@@ -20,6 +20,7 @@ window.onload = function() {
 		var isMoved = false;
 		var canvasX, canvasY;
 		var prevX, prevY;
+		ctx.lineCap="round";
 		ctx.lineWidth = document.getElementById("strokeSize").value;
 
 		$(canvas)
@@ -32,6 +33,7 @@ window.onload = function() {
 			canvasY = e.pageY - canvas.offsetTop;
 			prevX = canvasX;
 			prevY = canvasY;
+			path = new Path2D();
 			path.moveTo(canvasX, canvasY);
 			ctx.moveTo(canvasX, canvasY);
 		})
@@ -54,11 +56,14 @@ window.onload = function() {
 			isDown = false;
 			if (isMoved) {
 				ctx.closePath();
-				ctx.strokeStyle="#fff";
+				// ctx.strokeStyle="#fff";
 				ctx.stroke(path);
 			}
 			else {
-				ctx.fillRect(canvasX-ctx.lineWidth/2, canvasY-ctx.lineWidth/2, ctx.lineWidth, ctx.lineWidth);
+				ctx.beginPath(); // This line and the next two are to create circles on just a click
+				ctx.arc(canvasX, canvasY, ctx.lineWidth/2, 0, 2*Math.PI);
+				ctx.fill();
+				// ctx.fillRect(canvasX-ctx.lineWidth/2, canvasY-ctx.lineWidth/2, ctx.lineWidth, ctx.lineWidth); // This line is to create a rectangle on click
 			}
 		});
 	}
