@@ -1,4 +1,14 @@
 //thanks to http://codepen.io/mikethedj4/pen/cnCAL
+
+function Layer(path, stroke, fill, thickness) { //deal with text and shapes later
+	this.path = path;
+	this.stroke = stroke; //the color of the stroke
+	this.fill = fill;
+	this.thickness = thickness;
+}
+
+paths = [];
+
 window.onload = function() {
 	var canvas = document.getElementById("board");
 	var ctx = canvas.getContext("2d");
@@ -17,9 +27,9 @@ window.onload = function() {
 	ctx.fillStyle="#fff";
 	ctx.fillRect(0,0,canvas.width,canvas.height);
 	ctx.lineCap="round";
-	octx.lineCap="round";
 	ctx.strokeStyle="#000";
 	ctx.fillStyle="#000";
+	octx.lineCap="round";
 	octx.strokeStyle="#000";
 	octx.fillStyle="#000";
 
@@ -41,6 +51,7 @@ window.onload = function() {
 			ctx.lineWidth = document.getElementById("strokeSize").value;
 			path = new Path2D();
 			path.moveTo(canvasX, canvasY);
+			// console.log(e);
 		})
 		.mousemove(function(e) {
 			if (isDown) {
@@ -50,46 +61,63 @@ window.onload = function() {
 				path.lineTo(canvasX, canvasY);
 				octx.clearRect(0,0,canvas.width, canvas.height);
 				octx.stroke(path);
+				// console.log(e);
 			}
 		})
 		.mouseup(function(e) {
 			isDown = false;
-			octx.clearRect(0,0,canvas.width, canvas.height);
-			ctx.stroke(path);
-			if (!isMoved) {
-				ctx.beginPath(); // This line and the next two are to create circles on just a click
-				ctx.arc(canvasX, canvasY, ctx.lineWidth/2, 0, 2*Math.PI);
-				ctx.fill();
-				ctx.closePath();
+			if (isMoved) {
+				octx.clearRect(0,0,canvas.width, canvas.height);
+				ctx.stroke(path);
+				paths.push(path);
+				console.log("mouse "+paths);
 			}
+			else {
+				// To create circles on just a click
+				path.arc(canvasX, canvasY, ctx.lineWidth/2, 0, 2*Math.PI);
+				ctx.fill(path);
+				paths.push(path);
+				console.log("click "+paths)
+			}
+			// console.log(e);
 		});
 	}
 
 	// Touch Events Handlers
 	draw = {
 		started: false,
+		isMoved: false,
 		start: function(evt) {
 			this.started = true;
+			this.isMoved = false;
 			canvasX = evt.touches[0].pageX - canvas.offsetLeft;
 			canvasY = evt.touches[0].pageY - canvas.offsetTop;
 			octx.lineWidth = document.getElementById("strokeSize").value;
 			ctx.lineWidth = document.getElementById("strokeSize").value;
 			path = new Path2D();
 			path.moveTo(canvasX, canvasY);
+			// console.log(evt);
 		},
 		move: function(evt) {
 			if (this.started) {
+				this.isMoved = true;
 				canvasX = evt.touches[0].pageX - canvas.offsetLeft;
 				canvasY = evt.touches[0].pageY - canvas.offsetTop;
 				path.lineTo(canvasX, canvasY);
 				octx.clearRect(0,0,canvas.width, canvas.height);
 				octx.stroke(path);
+				// console.log(evt);
 			}
 		},
 		end: function(evt) {
 			this.started = false;
-			octx.clearRect(0,0,canvas.width, canvas.height);
-			ctx.stroke(path);
+			if (this.isMoved) {
+				octx.clearRect(0,0,canvas.width, canvas.height);
+				ctx.stroke(path);
+				paths.push(path);
+				console.log("touch "+paths)
+			}
+			// console.log(evt);
 		}
 	};
 
@@ -107,7 +135,7 @@ window.onload = function() {
 
 function paletteInit() {
 	$("#color").spectrum({
-		color: "#000000",
+		color: "#000",
 		showInput: true,
 		showAlpha: true,
 		className: "full-spectrum",
