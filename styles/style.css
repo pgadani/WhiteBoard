@@ -1,11 +1,28 @@
+body {
+	margin: 0;
+	padding: 0;
+}
+
 .full-spectrum .sp-palette {
 	max-width: 200px;
 }
 
-#board {
-	cursor: crosshair;
+#toolbar {
+	margin:5px;
+	border-bottom:2px;
+	border-color: black;
 }
-
+#board {
+	margin: 0;
+	cursor: crosshair;
+	position: absolute;
+}
+#overlay {
+	margin: 0;
+	position: absolute;
+	cursor: crosshair;
+	z-index: 10;
+}
 input {
 	border: 2px solid gray;
 	border-radius: 4px;

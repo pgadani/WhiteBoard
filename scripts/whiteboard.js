@@ -2,15 +2,26 @@
 window.onload = function() {
 	var canvas = document.getElementById("board");
 	var ctx = canvas.getContext("2d");
+	var overlay = document.getElementById("overlay");
+	var octx = overlay.getContext("2d");
 
 	// Fill Window Width and Height
-	canvas.width = window.innerWidth;
-	canvas.height = window.innerHeight;
+	var toolHeight = $("#toolbar").height();
+	var width = $(window).width();
+	canvas.width = width;
+	canvas.height = window.innerHeight - toolHeight - 15;
+	overlay.width = width;
+	overlay.height = window.innerHeight - toolHeight - 15;
 
 	// Set Background Color
 	ctx.fillStyle="#fff";
 	ctx.fillRect(0,0,canvas.width,canvas.height);
+	ctx.lineCap="round";
+	octx.lineCap="round";
+	ctx.strokeStyle="#000";
 	ctx.fillStyle="#000";
+	octx.strokeStyle="#000";
+	octx.fillStyle="#000";
 
 	var path = new Path2D();
 
@@ -19,51 +30,37 @@ window.onload = function() {
 		var isDown = false;
 		var isMoved = false;
 		var canvasX, canvasY;
-		var prevX, prevY;
-		ctx.lineCap="round";
-		ctx.lineWidth = document.getElementById("strokeSize").value;
 
-		$(canvas)
-		.mousedown(function(e){
+		$(overlay)
+		.mousedown(function(e) {
 			isDown = true;
 			isMoved = false;
-			ctx.lineWidth = document.getElementById("strokeSize").value
-			// ctx.beginPath();
 			canvasX = e.pageX - canvas.offsetLeft;
 			canvasY = e.pageY - canvas.offsetTop;
-			prevX = canvasX;
-			prevY = canvasY;
+			octx.lineWidth = document.getElementById("strokeSize").value;
+			ctx.lineWidth = document.getElementById("strokeSize").value;
 			path = new Path2D();
 			path.moveTo(canvasX, canvasY);
-			ctx.moveTo(canvasX, canvasY);
 		})
-		.mousemove(function(e){
-			if(isDown !== false) {
+		.mousemove(function(e) {
+			if (isDown) {
 				isMoved = true;
 				canvasX = e.pageX - canvas.offsetLeft;
 				canvasY = e.pageY - canvas.offsetTop;
-				ctx.beginPath();
-				ctx.moveTo(prevX, prevY);
-				ctx.lineTo(canvasX, canvasY);
-				//ctx.strokeStyle = "#000";
-				ctx.stroke();
 				path.lineTo(canvasX, canvasY);
-				prevX = canvasX;
-				prevY = canvasY;
+				octx.clearRect(0,0,canvas.width, canvas.height);
+				octx.stroke(path);
 			}
 		})
-		.mouseup(function(e){
+		.mouseup(function(e) {
 			isDown = false;
-			if (isMoved) {
-				ctx.closePath();
-				// ctx.strokeStyle="#fff";
-				ctx.stroke(path);
-			}
-			else {
+			octx.clearRect(0,0,canvas.width, canvas.height);
+			ctx.stroke(path);
+			if (!isMoved) {
 				ctx.beginPath(); // This line and the next two are to create circles on just a click
 				ctx.arc(canvasX, canvasY, ctx.lineWidth/2, 0, 2*Math.PI);
 				ctx.fill();
-				// ctx.fillRect(canvasX-ctx.lineWidth/2, canvasY-ctx.lineWidth/2, ctx.lineWidth, ctx.lineWidth); // This line is to create a rectangle on click
+				ctx.closePath();
 			}
 		});
 	}
@@ -72,33 +69,34 @@ window.onload = function() {
 	draw = {
 		started: false,
 		start: function(evt) {
-			ctx.beginPath();
-			ctx.moveTo(
-				evt.touches[0].pageX - canvas.offsetLeft,
-				evt.touches[0].pageY - canvas.offsetTop
-			);
 			this.started = true;
+			canvasX = evt.touches[0].pageX - canvas.offsetLeft;
+			canvasY = evt.touches[0].pageY - canvas.offsetTop;
+			octx.lineWidth = document.getElementById("strokeSize").value;
+			ctx.lineWidth = document.getElementById("strokeSize").value;
+			path = new Path2D();
+			path.moveTo(canvasX, canvasY);
 		},
 		move: function(evt) {
 			if (this.started) {
-				ctx.lineTo(
-					evt.touches[0].pageX - canvas.offsetLeft,
-					evt.touches[0].pageY - canvas.offsetTop
-				);
-				//ctx.strokeStyle = "#000";
-				ctx.lineWidth = document.getElementById("strokeSize").value;
-				ctx.stroke();
+				canvasX = evt.touches[0].pageX - canvas.offsetLeft;
+				canvasY = evt.touches[0].pageY - canvas.offsetTop;
+				path.lineTo(canvasX, canvasY);
+				octx.clearRect(0,0,canvas.width, canvas.height);
+				octx.stroke(path);
 			}
 		},
 		end: function(evt) {
 			this.started = false;
+			octx.clearRect(0,0,canvas.width, canvas.height);
+			ctx.stroke(path);
 		}
 	};
 
 	// Touch Events
-	canvas.addEventListener('touchstart', draw.start, false);
-	canvas.addEventListener('touchend', draw.end, false);
-	canvas.addEventListener('touchmove', draw.move, false);
+	overlay.addEventListener('touchstart', draw.start, false);
+	overlay.addEventListener('touchend', draw.end, false);
+	overlay.addEventListener('touchmove', draw.move, false);
 
 	// Disable Page Move
 	document.body.addEventListener('touchmove',function(evt){
@@ -129,8 +127,11 @@ function paletteInit() {
 		},
 		change: function(color) {
 			ctx = document.getElementById("board").getContext("2d");
+			octx = document.getElementById("overlay").getContext("2d");
 			ctx.strokeStyle = color.toRgbString();
 			ctx.fillStyle = color.toRgbString();
+			octx.strokeStyle = color.toRgbString();
+			octx.fillStyle = color.toRgbString();
 		},
 		palette: [
 			["rgb(0, 0, 0)", "rgb(67, 67, 67)", "rgb(102, 102, 102)",
