@@ -29,37 +29,39 @@ window.onload = function() {
 	svg.style.width = width.toString() + "px";
 	svg.style.height = (window.innerHeight - toolHeight - 15).toString() + "px";
 
+	var svgSnap = Snap("#board");
+
 	// Mouse Event Handlers
 	if (svgDiv) {
 		var isDown = false;
 		var isMoved = false;
 		var canvasX, canvasY;
-		var pInfo = "";
-		var count = 0;
+		var path;
+		var pInfo;
 
-		$(board)
+		svgSnap
 		.mousedown(function(e) {
 			isDown = true;
 			isMoved = false;
 			canvasX = e.pageX - svgDiv.offsetLeft;
 			canvasY = e.pageY - svgDiv.offsetTop;
-			var path = document.createElementNS("http://www.w3.org/2000/svg", 'path');
-			path.setAttribute("stroke-width", document.getElementById("strokeSize").value.toString() + "px");
-			path.setAttribute("stroke", wColor);
-			path.setAttribute("fill", "none");
-			pInfo = "M" + canvasX.toString() + " " + canvasY.toString();
-			path.setAttribute("d", pInfo);
-			path.setAttribute("id", "path" + count.toString());
-			svg.appendChild(path);
+			pInfo = "M" + canvasX + "," + canvasY;
+			path = svgSnap.path(pInfo)
+			path.attr({
+				strokeWidth: document.getElementById("strokeSize").value,
+				stroke: wColor,
+				fill: "none",
+				strokeLinecap: "round",
+				strokeLinejoin: "round"
+			});
 		})
 		.mousemove(function(e) {
 			canvasX = e.pageX - svgDiv.offsetLeft;
 			canvasY = e.pageY - svgDiv.offsetTop;
 			if (isDown) {
 				isMoved = true;
-				var path = document.getElementById("path"+count.toString());
 				pInfo += " L" + canvasX.toString() + " " + canvasY.toString();
-				path.setAttribute("d", pInfo);
+				path.attr({d: pInfo});
 			}
 			else {
 				// var found = false;
@@ -88,68 +90,64 @@ window.onload = function() {
 			}
 		})
 		.mouseup(function(e) {
+			if (e.type === 'touchend') {
+				isDown = false;
+				return false;
+			}
 			isDown = false;
-			count++;
-			// if (isMoved) {
-			// 	ctx.stroke(path);
-			// 	var l = new Layer(path, ctx.strokeStyle, ctx.lineWidth, 0);
-			// 	layers.push(l);
-			// 	console.log("mouse "+layers);
-			// }
-			// else {
-			// 	// To create circles on just a click
-			// 	path.arc(canvasX, canvasY, ctx.lineWidth/2, 0, 2*Math.PI);
-			// 	ctx.fill(path);
-			// 	var l = new Layer(path, ctx.fillStyle, ctx.lineWidth, 1);
-			// 	layers.push(l);
-			// 	console.log("click "+layers)
-			// }
+			if (!isMoved) {
+				canvasX = e.pageX - svgDiv.offsetLeft;
+				canvasY = e.pageY - svgDiv.offsetTop;
+				svgSnap.circle(canvasX, canvasY, document.getElementById("strokeSize").value/2);
+			}
 		});
 	}
 
 	// Touch Events Handlers
-	var draw = {
-		started: false,
-		isMoved: false,
-		start: function(evt) {
-			// this.started = true;
-			// this.isMoved = false;
-			// canvasX = evt.touches[0].pageX - canvas.offsetLeft;
-			// canvasY = evt.touches[0].pageY - canvas.offsetTop;
-			// octx.lineWidth = document.getElementById("strokeSize").value;
-			// ctx.lineWidth = document.getElementById("strokeSize").value;
-			// path = new Path2D();
-			// path.moveTo(canvasX, canvasY);
-			// console.log(evt);
-		},
-		move: function(evt) {
-			if (this.started) {
-				// this.isMoved = true;
-				// canvasX = evt.touches[0].pageX - canvas.offsetLeft;
-				// canvasY = evt.touches[0].pageY - canvas.offsetTop;
-				// path.lineTo(canvasX, canvasY);
-				// octx.clearRect(0,0,canvas.width, canvas.height);
-				// octx.stroke(path);
-				// console.log(evt);
-			}
-		},
-		end: function(evt) {
-			this.started = false;
-			if (this.isMoved) {
-				// octx.clearRect(0,0,canvas.width, canvas.height);
-				// ctx.stroke(path);
-				// var l = new Layer(path, ctx.strokeStyle, ctx.lineWidth, 0);
-				// layers.push(l);
-				// console.log("touch "+layers);
-			}
-			// console.log(evt);
-		}
-	};
+	// var draw = {
+	// 	started: false,
+	// 	isMoved: false,
+	// 	path: null,
+	// 	pInfo: "",
+	// 	canvasX: 0,
+	// 	canvasY: 0,
+	// 	start: function(evt) {
+	// 		this.started = true;
+	// 		var canvasX = evt.touches[0].pageX - svgDiv.offsetLeft;
+	// 		var canvasY = evt.touches[0].pageY - svgDiv.offsetTop;
+	// 		this.pInfo = "M" + canvasX + "," + canvasY;
+	// 		this.path = svgSnap.path(pInfo)
+	// 		this.path.attr({
+	// 			strokeWidth: document.getElementById("strokeSize").value,
+	// 			stroke: wColor,
+	// 			fill: "none"
+	// 		});
+	// 	},
+	// 	move: function(evt) {
+	// 		if (this.started) {
+	// 			this.isMoved = true;
+	// 			var canvasX = evt.touches[0].pageX - svgDiv.offsetLeft;
+	// 			var canvasY = evt.touches[0].pageY - svgDiv.offsetTop;
+	// 			this.pInfo += "L" + canvasX + "," + canvasY;
+	// 			this.path.attr({d: this.pInfo})
+	// 		}
+	// 	},
+	// 	end: function(evt) {
+	// 		this.started = false;
+	// 		if (this.isMoved) {
+	// 			// octx.clearRect(0,0,canvas.width, canvas.height);
+	// 			// ctx.stroke(path);
+	// 			// var l = new Layer(path, ctx.strokeStyle, ctx.lineWidth, 0);
+	// 			// layers.push(l);
+	// 			// console.log("touch "+layers);
+	// 		}
+	// 	}
+	// };
 
 	// Touch Events
-	// overlay.addEventListener('touchstart', draw.start, false);
-	// overlay.addEventListener('touchend', draw.end, false);
-	// overlay.addEventListener('touchmove', draw.move, false);
+	// svgSnap.touchstart(draw.start);
+	// svgSnap.touchend(draw.end);
+	// svgSnap.touchmove(draw.move);
 
 	// Disable Page Move
 	document.body.addEventListener('touchmove',function(evt){
@@ -169,7 +167,7 @@ function paletteInit() {
 		showSelectionPalette: true,
 		maxSelectionSize: 10,
 		preferredFormat: "hex",
-		localStorageKey: "spectrum.demo",
+		localStorageKey: "color_selector",
 		move: function (color) {
 		},
 		show: function () {

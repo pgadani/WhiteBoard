@@ -17,12 +17,6 @@ body {
 	cursor: crosshair;
 	position: absolute;
 }
-#overlay {
-	margin: 0;
-	position: absolute;
-	cursor: crosshair;
-	z-index: 10;
-}
 input {
 	border: 2px solid gray;
 	border-radius: 4px;
