@@ -1,13 +1,20 @@
 //thanks to http://codepen.io/mikethedj4/pen/cnCAL
 
-function Layer(path, stroke, fill, thickness) { //deal with text and shapes later
+function Layer(path, color, thickness, drawType) { //deal with text and shapes later
 	this.path = path;
-	this.stroke = stroke; //the color of the stroke
-	this.fill = fill;
+	this.color = color; //the color of the stroke
 	this.thickness = thickness;
+	this.drawType = drawType; //0 for stroke, 1 for fill
+}
+Layer.prototype.toString = function() {
+	return "strokeStyle: "+this.stroke+", fillStyle: "+this.fill+", thickness: "+this.thickness+"\n";
+}
+Layer.prototype.containsPoint = function(x, y) {
+	var ctx = document.getElementById("board").getContext("2d");
+	return ctx.isPointInStroke(this.path, x, y);
 }
 
-paths = [];
+layers = [];
 
 window.onload = function() {
 	var canvas = document.getElementById("board");
@@ -51,17 +58,40 @@ window.onload = function() {
 			ctx.lineWidth = document.getElementById("strokeSize").value;
 			path = new Path2D();
 			path.moveTo(canvasX, canvasY);
-			// console.log(e);
 		})
 		.mousemove(function(e) {
+			canvasX = e.pageX - canvas.offsetLeft;
+			canvasY = e.pageY - canvas.offsetTop;
 			if (isDown) {
 				isMoved = true;
-				canvasX = e.pageX - canvas.offsetLeft;
-				canvasY = e.pageY - canvas.offsetTop;
 				path.lineTo(canvasX, canvasY);
 				octx.clearRect(0,0,canvas.width, canvas.height);
 				octx.stroke(path);
-				// console.log(e);
+			}
+			else {
+				var found = false;
+				layers.forEach(function(l) {
+					if (l.containsPoint(canvasX, canvasY)) {
+						console.log("hovering over "+l);
+						found = true;
+						octx.clearRect(0,0,canvas.width, canvas.height);
+						octx.lineWidth = l.thickness;
+						if (l.drawType==0) {
+							octx.strokeStyle = "rgba(255,255,255,0.4)";
+							octx.stroke(l.path);
+							octx.strokeStyle = ctx.strokeStyle;
+						}
+						else {
+							octx.fillStyle = "rgba(255,255,255,0.4)";
+							octx.fill(l.path);
+							octx.fillStyle = ctx.fillStyle;
+						}
+						octx.lineWidth = ctx.lineWidth;
+					}
+				});
+				if (!found) {
+					octx.clearRect(0,0,canvas.width, canvas.height);
+				}
 			}
 		})
 		.mouseup(function(e) {
@@ -69,17 +99,18 @@ window.onload = function() {
 			if (isMoved) {
 				octx.clearRect(0,0,canvas.width, canvas.height);
 				ctx.stroke(path);
-				paths.push(path);
-				console.log("mouse "+paths);
+				var l = new Layer(path, ctx.strokeStyle, ctx.lineWidth, 0);
+				layers.push(l);
+				console.log("mouse "+layers);
 			}
 			else {
 				// To create circles on just a click
 				path.arc(canvasX, canvasY, ctx.lineWidth/2, 0, 2*Math.PI);
 				ctx.fill(path);
-				paths.push(path);
-				console.log("click "+paths)
+				var l = new Layer(path, ctx.fillStyle, ctx.lineWidth, 1);
+				layers.push(l);
+				console.log("click "+layers)
 			}
-			// console.log(e);
 		});
 	}
 
@@ -114,8 +145,9 @@ window.onload = function() {
 			if (this.isMoved) {
 				octx.clearRect(0,0,canvas.width, canvas.height);
 				ctx.stroke(path);
-				paths.push(path);
-				console.log("touch "+paths)
+				var l = new Layer(path, ctx.strokeStyle, ctx.lineWidth, 0);
+				layers.push(l);
+				console.log("touch "+layers);
 			}
 			// console.log(evt);
 		}
