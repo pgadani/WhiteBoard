@@ -8,26 +8,29 @@ function Layer(path, color, thickness, drawType) { //deal with text and shapes l
 }
 Layer.prototype.toString = function() {
 	return "strokeStyle: "+this.stroke+", fillStyle: "+this.fill+", thickness: "+this.thickness+"\n";
-}
+};
 Layer.prototype.containsPoint = function(x, y) {
 	var ctx = document.getElementById("board").getContext("2d");
 	return ctx.isPointInStroke(this.path, x, y);
-}
+};
 
-layers = [];
+var layers = [];
 var wColor = "#000";
 
 window.onload = function() {
+	var svgDiv = document.getElementById("board-container");
 	var svg = document.getElementById("board");
 
 	// Fill Window Width and Height
 	var toolHeight = $("#toolbar").height();
 	var width = $(window).width();
-	svg.width = width;
-	svg.height = window.innerHeight - toolHeight - 15;
+	svgDiv.style.width = width.toString() + "px";
+	svgDiv.style.height = (window.innerHeight - toolHeight - 15).toString() + "px";
+	svg.style.width = width.toString() + "px";
+	svg.style.height = (window.innerHeight - toolHeight - 15).toString() + "px";
 
 	// Mouse Event Handlers
-	if (svg) {
+	if (svgDiv) {
 		var isDown = false;
 		var isMoved = false;
 		var canvasX, canvasY;
@@ -38,19 +41,20 @@ window.onload = function() {
 		.mousedown(function(e) {
 			isDown = true;
 			isMoved = false;
-			canvasX = e.pageX - svg.offsetLeft;
-			canvasY = e.pageY - svg.offsetTop;
+			canvasX = e.pageX - svgDiv.offsetLeft;
+			canvasY = e.pageY - svgDiv.offsetTop;
 			var path = document.createElementNS("http://www.w3.org/2000/svg", 'path');
-			path.style.strokeWidth = document.getElementById("strokeSize").value.toString() + "px";
-			path.style.stroke = wColor;
-			pInfo += "M" + canvasX.toString() + " " + canvasY.toString();
+			path.setAttribute("stroke-width", document.getElementById("strokeSize").value.toString() + "px");
+			path.setAttribute("stroke", wColor);
+			path.setAttribute("fill", "none");
+			pInfo = "M" + canvasX.toString() + " " + canvasY.toString();
 			path.setAttribute("d", pInfo);
-			path.id = "path" + count.toString();
+			path.setAttribute("id", "path" + count.toString());
 			svg.appendChild(path);
 		})
 		.mousemove(function(e) {
-			canvasX = e.pageX - svg.offsetLeft;
-			canvasY = e.pageY - svg.offsetTop;
+			canvasX = e.pageX - svgDiv.offsetLeft;
+			canvasY = e.pageY - svgDiv.offsetTop;
 			if (isDown) {
 				isMoved = true;
 				var path = document.getElementById("path"+count.toString());
@@ -104,7 +108,7 @@ window.onload = function() {
 	}
 
 	// Touch Events Handlers
-	draw = {
+	var draw = {
 		started: false,
 		isMoved: false,
 		start: function(evt) {
