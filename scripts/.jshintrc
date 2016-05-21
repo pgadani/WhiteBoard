@@ -6,6 +6,6 @@
 	"devel": true,
 
 	"globals": {
-		"board": true
+		"Snap": true
 	}
 }

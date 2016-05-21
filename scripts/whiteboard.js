@@ -18,12 +18,23 @@ var layers = [];
 var wColor = "#000";
 
 window.onload = function() {
+	// Get DOM elements and null check
+	var toolBar = document.getElementById("toolbar");	
 	var svgDiv = document.getElementById("board-container");
 	var svg = document.getElementById("board");
 
+	if (!toolBar || !svgDiv || !svg) {
+		// error handling
+		var errorText = document.createElement("p");
+		errorText.innerHTML = "Setup error.";
+		document.body.appendChild(errorText);
+		return;
+	}
+
 	// Fill Window Width and Height
-	var toolHeight = $("#toolbar").height();
-	var width = $(window).width();
+	var toolHeight = toolBar.style.height;
+	var width = window.innerWidth;
+
 	svgDiv.style.width = width.toString() + "px";
 	svgDiv.style.height = (window.innerHeight - toolHeight - 15).toString() + "px";
 	svg.style.width = width.toString() + "px";
@@ -32,122 +43,75 @@ window.onload = function() {
 	var svgSnap = Snap("#board");
 
 	// Mouse Event Handlers
-	if (svgDiv) {
-		var isDown = false;
-		var isMoved = false;
-		var canvasX, canvasY;
-		var path;
-		var pInfo;
+	var isDown = false;
+	var isMoved = false;
+	var canvasX, canvasY;
+	var path;
+	var pInfo;
 
-		svgSnap
-		.mousedown(function(e) {
-			isDown = true;
-			isMoved = false;
-			canvasX = e.pageX - svgDiv.offsetLeft;
-			canvasY = e.pageY - svgDiv.offsetTop;
-			pInfo = "M" + canvasX + "," + canvasY;
-			path = svgSnap.path(pInfo)
-			path.attr({
-				strokeWidth: document.getElementById("strokeSize").value,
-				stroke: wColor,
-				fill: "none",
-				strokeLinecap: "round",
-				strokeLinejoin: "round"
-			});
-		})
-		.mousemove(function(e) {
-			canvasX = e.pageX - svgDiv.offsetLeft;
-			canvasY = e.pageY - svgDiv.offsetTop;
-			if (isDown) {
-				isMoved = true;
-				pInfo += " L" + canvasX.toString() + " " + canvasY.toString();
-				path.attr({d: pInfo});
-			}
-			else {
-				// var found = false;
-				// layers.forEach(function(l) {
-				// 	if (l.containsPoint(canvasX, canvasY)) {
-				// 		console.log("hovering over "+l);
-				// 		found = true;
-				// 		octx.clearRect(0,0,canvas.width, canvas.height);
-				// 		octx.lineWidth = l.thickness;
-				// 		if (l.drawType==0) {
-				// 			octx.strokeStyle = "rgba(255,255,255,0.4)";
-				// 			octx.stroke(l.path);
-				// 			octx.strokeStyle = ctx.strokeStyle;
-				// 		}
-				// 		else {
-				// 			octx.fillStyle = "rgba(255,255,255,0.4)";
-				// 			octx.fill(l.path);
-				// 			octx.fillStyle = ctx.fillStyle;
-				// 		}
-				// 		octx.lineWidth = ctx.lineWidth;
-				// 	}
-				// });
-				// if (!found) {
-				// 	octx.clearRect(0,0,canvas.width, canvas.height);
-				// }
-			}
-		})
-		.mouseup(function(e) {
-			if (e.type === 'touchend') {
-				isDown = false;
-				return false;
-			}
-			isDown = false;
-			if (!isMoved) {
-				canvasX = e.pageX - svgDiv.offsetLeft;
-				canvasY = e.pageY - svgDiv.offsetTop;
-				svgSnap.circle(canvasX, canvasY, document.getElementById("strokeSize").value/2);
-			}
+	svgSnap
+	.mousedown(function(e) {
+		isDown = true;
+		isMoved = false;
+		canvasX = e.pageX - svgDiv.offsetLeft;
+		canvasY = e.pageY - svgDiv.offsetTop;
+		pInfo = "M" + canvasX + "," + canvasY;
+		path = svgSnap.path(pInfo);
+		path.attr({
+			strokeWidth: document.getElementById("strokeSize").value,
+			stroke: wColor,
+			fill: "none",
+			strokeLinecap: "round",
+			strokeLinejoin: "round"
 		});
-	}
-
-	// Touch Events Handlers
-	// var draw = {
-	// 	started: false,
-	// 	isMoved: false,
-	// 	path: null,
-	// 	pInfo: "",
-	// 	canvasX: 0,
-	// 	canvasY: 0,
-	// 	start: function(evt) {
-	// 		this.started = true;
-	// 		var canvasX = evt.touches[0].pageX - svgDiv.offsetLeft;
-	// 		var canvasY = evt.touches[0].pageY - svgDiv.offsetTop;
-	// 		this.pInfo = "M" + canvasX + "," + canvasY;
-	// 		this.path = svgSnap.path(pInfo)
-	// 		this.path.attr({
-	// 			strokeWidth: document.getElementById("strokeSize").value,
-	// 			stroke: wColor,
-	// 			fill: "none"
-	// 		});
-	// 	},
-	// 	move: function(evt) {
-	// 		if (this.started) {
-	// 			this.isMoved = true;
-	// 			var canvasX = evt.touches[0].pageX - svgDiv.offsetLeft;
-	// 			var canvasY = evt.touches[0].pageY - svgDiv.offsetTop;
-	// 			this.pInfo += "L" + canvasX + "," + canvasY;
-	// 			this.path.attr({d: this.pInfo})
-	// 		}
-	// 	},
-	// 	end: function(evt) {
-	// 		this.started = false;
-	// 		if (this.isMoved) {
-	// 			// octx.clearRect(0,0,canvas.width, canvas.height);
-	// 			// ctx.stroke(path);
-	// 			// var l = new Layer(path, ctx.strokeStyle, ctx.lineWidth, 0);
-	// 			// layers.push(l);
-	// 			// console.log("touch "+layers);
-	// 		}
-	// 	}
-	// };
-
-	// Touch Events
-	// svgSnap.touchstart(draw.start);
-	// svgSnap.touchend(draw.end);
-	// svgSnap.touchmove(draw.move);
+	})
+	.mousemove(function(e) {
+		canvasX = e.pageX - svgDiv.offsetLeft;
+		canvasY = e.pageY - svgDiv.offsetTop;
+		if (isDown) {
+			isMoved = true;
+			pInfo += " L" + canvasX.toString() + " " + canvasY.toString();
+			path.attr({d: pInfo});
+		}
+		else {
+			// var found = false;
+			// layers.forEach(function(l) {
+			// 	if (l.containsPoint(canvasX, canvasY)) {
+			// 		console.log("hovering over "+l);
+			// 		found = true;
+			// 		octx.clearRect(0,0,canvas.width, canvas.height);
+			// 		octx.lineWidth = l.thickness;
+			// 		if (l.drawType==0) {
+			// 			octx.strokeStyle = "rgba(255,255,255,0.4)";
+			// 			octx.stroke(l.path);
+			// 			octx.strokeStyle = ctx.strokeStyle;
+			// 		}
+			// 		else {
+			// 			octx.fillStyle = "rgba(255,255,255,0.4)";
+			// 			octx.fill(l.path);
+			// 			octx.fillStyle = ctx.fillStyle;
+			// 		}
+			// 		octx.lineWidth = ctx.lineWidth;
+			// 	}
+			// });
+			// if (!found) {
+			// 	octx.clearRect(0,0,canvas.width, canvas.height);
+			// }
+		}
+	})
+	.mouseup(function(e) {
+		if (e.type === 'touchend') {
+			isDown = false;
+			return false;
+		}
+		isDown = false;
+		if (!isMoved) {
+			canvasX = e.pageX - svgDiv.offsetLeft;
+			canvasY = e.pageY - svgDiv.offsetTop;
+			svgSnap.circle(canvasX, canvasY, document.getElementById("strokeSize").value/2);
+		}
+	});
+	
 
 	// Disable Page Move
 	document.body.addEventListener('touchmove',function(evt){
