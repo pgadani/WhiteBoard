@@ -15,102 +15,91 @@ Layer.prototype.containsPoint = function(x, y) {
 }
 
 layers = [];
+var wColor = "#000";
 
 window.onload = function() {
-	var canvas = document.getElementById("board");
-	var ctx = canvas.getContext("2d");
-	var overlay = document.getElementById("overlay");
-	var octx = overlay.getContext("2d");
+	var svg = document.getElementById("board");
 
 	// Fill Window Width and Height
 	var toolHeight = $("#toolbar").height();
 	var width = $(window).width();
-	canvas.width = width;
-	canvas.height = window.innerHeight - toolHeight - 15;
-	overlay.width = width;
-	overlay.height = window.innerHeight - toolHeight - 15;
-
-	// Set Background Color
-	ctx.fillStyle="#fff";
-	ctx.fillRect(0,0,canvas.width,canvas.height);
-	ctx.lineCap="round";
-	ctx.strokeStyle="#000";
-	ctx.fillStyle="#000";
-	octx.lineCap="round";
-	octx.strokeStyle="#000";
-	octx.fillStyle="#000";
-
-	var path = new Path2D();
+	svg.width = width;
+	svg.height = window.innerHeight - toolHeight - 15;
 
 	// Mouse Event Handlers
-	if (canvas) {
+	if (svg) {
 		var isDown = false;
 		var isMoved = false;
 		var canvasX, canvasY;
+		var pInfo = "";
+		var count = 0;
 
-		$(overlay)
+		$(board)
 		.mousedown(function(e) {
 			isDown = true;
 			isMoved = false;
-			canvasX = e.pageX - canvas.offsetLeft;
-			canvasY = e.pageY - canvas.offsetTop;
-			octx.lineWidth = document.getElementById("strokeSize").value;
-			ctx.lineWidth = document.getElementById("strokeSize").value;
-			path = new Path2D();
-			path.moveTo(canvasX, canvasY);
+			canvasX = e.pageX - svg.offsetLeft;
+			canvasY = e.pageY - svg.offsetTop;
+			var path = document.createElementNS("http://www.w3.org/2000/svg", 'path');
+			path.style.strokeWidth = document.getElementById("strokeSize").value.toString() + "px";
+			path.style.stroke = wColor;
+			pInfo += "M" + canvasX.toString() + " " + canvasY.toString();
+			path.setAttribute("d", pInfo);
+			path.id = "path" + count.toString();
+			svg.appendChild(path);
 		})
 		.mousemove(function(e) {
-			canvasX = e.pageX - canvas.offsetLeft;
-			canvasY = e.pageY - canvas.offsetTop;
+			canvasX = e.pageX - svg.offsetLeft;
+			canvasY = e.pageY - svg.offsetTop;
 			if (isDown) {
 				isMoved = true;
-				path.lineTo(canvasX, canvasY);
-				octx.clearRect(0,0,canvas.width, canvas.height);
-				octx.stroke(path);
+				var path = document.getElementById("path"+count.toString());
+				pInfo += " L" + canvasX.toString() + " " + canvasY.toString();
+				path.setAttribute("d", pInfo);
 			}
 			else {
-				var found = false;
-				layers.forEach(function(l) {
-					if (l.containsPoint(canvasX, canvasY)) {
-						console.log("hovering over "+l);
-						found = true;
-						octx.clearRect(0,0,canvas.width, canvas.height);
-						octx.lineWidth = l.thickness;
-						if (l.drawType==0) {
-							octx.strokeStyle = "rgba(255,255,255,0.4)";
-							octx.stroke(l.path);
-							octx.strokeStyle = ctx.strokeStyle;
-						}
-						else {
-							octx.fillStyle = "rgba(255,255,255,0.4)";
-							octx.fill(l.path);
-							octx.fillStyle = ctx.fillStyle;
-						}
-						octx.lineWidth = ctx.lineWidth;
-					}
-				});
-				if (!found) {
-					octx.clearRect(0,0,canvas.width, canvas.height);
-				}
+				// var found = false;
+				// layers.forEach(function(l) {
+				// 	if (l.containsPoint(canvasX, canvasY)) {
+				// 		console.log("hovering over "+l);
+				// 		found = true;
+				// 		octx.clearRect(0,0,canvas.width, canvas.height);
+				// 		octx.lineWidth = l.thickness;
+				// 		if (l.drawType==0) {
+				// 			octx.strokeStyle = "rgba(255,255,255,0.4)";
+				// 			octx.stroke(l.path);
+				// 			octx.strokeStyle = ctx.strokeStyle;
+				// 		}
+				// 		else {
+				// 			octx.fillStyle = "rgba(255,255,255,0.4)";
+				// 			octx.fill(l.path);
+				// 			octx.fillStyle = ctx.fillStyle;
+				// 		}
+				// 		octx.lineWidth = ctx.lineWidth;
+				// 	}
+				// });
+				// if (!found) {
+				// 	octx.clearRect(0,0,canvas.width, canvas.height);
+				// }
 			}
 		})
 		.mouseup(function(e) {
 			isDown = false;
-			if (isMoved) {
-				octx.clearRect(0,0,canvas.width, canvas.height);
-				ctx.stroke(path);
-				var l = new Layer(path, ctx.strokeStyle, ctx.lineWidth, 0);
-				layers.push(l);
-				console.log("mouse "+layers);
-			}
-			else {
-				// To create circles on just a click
-				path.arc(canvasX, canvasY, ctx.lineWidth/2, 0, 2*Math.PI);
-				ctx.fill(path);
-				var l = new Layer(path, ctx.fillStyle, ctx.lineWidth, 1);
-				layers.push(l);
-				console.log("click "+layers)
-			}
+			count++;
+			// if (isMoved) {
+			// 	ctx.stroke(path);
+			// 	var l = new Layer(path, ctx.strokeStyle, ctx.lineWidth, 0);
+			// 	layers.push(l);
+			// 	console.log("mouse "+layers);
+			// }
+			// else {
+			// 	// To create circles on just a click
+			// 	path.arc(canvasX, canvasY, ctx.lineWidth/2, 0, 2*Math.PI);
+			// 	ctx.fill(path);
+			// 	var l = new Layer(path, ctx.fillStyle, ctx.lineWidth, 1);
+			// 	layers.push(l);
+			// 	console.log("click "+layers)
+			// }
 		});
 	}
 
@@ -119,44 +108,44 @@ window.onload = function() {
 		started: false,
 		isMoved: false,
 		start: function(evt) {
-			this.started = true;
-			this.isMoved = false;
-			canvasX = evt.touches[0].pageX - canvas.offsetLeft;
-			canvasY = evt.touches[0].pageY - canvas.offsetTop;
-			octx.lineWidth = document.getElementById("strokeSize").value;
-			ctx.lineWidth = document.getElementById("strokeSize").value;
-			path = new Path2D();
-			path.moveTo(canvasX, canvasY);
+			// this.started = true;
+			// this.isMoved = false;
+			// canvasX = evt.touches[0].pageX - canvas.offsetLeft;
+			// canvasY = evt.touches[0].pageY - canvas.offsetTop;
+			// octx.lineWidth = document.getElementById("strokeSize").value;
+			// ctx.lineWidth = document.getElementById("strokeSize").value;
+			// path = new Path2D();
+			// path.moveTo(canvasX, canvasY);
 			// console.log(evt);
 		},
 		move: function(evt) {
 			if (this.started) {
-				this.isMoved = true;
-				canvasX = evt.touches[0].pageX - canvas.offsetLeft;
-				canvasY = evt.touches[0].pageY - canvas.offsetTop;
-				path.lineTo(canvasX, canvasY);
-				octx.clearRect(0,0,canvas.width, canvas.height);
-				octx.stroke(path);
+				// this.isMoved = true;
+				// canvasX = evt.touches[0].pageX - canvas.offsetLeft;
+				// canvasY = evt.touches[0].pageY - canvas.offsetTop;
+				// path.lineTo(canvasX, canvasY);
+				// octx.clearRect(0,0,canvas.width, canvas.height);
+				// octx.stroke(path);
 				// console.log(evt);
 			}
 		},
 		end: function(evt) {
 			this.started = false;
 			if (this.isMoved) {
-				octx.clearRect(0,0,canvas.width, canvas.height);
-				ctx.stroke(path);
-				var l = new Layer(path, ctx.strokeStyle, ctx.lineWidth, 0);
-				layers.push(l);
-				console.log("touch "+layers);
+				// octx.clearRect(0,0,canvas.width, canvas.height);
+				// ctx.stroke(path);
+				// var l = new Layer(path, ctx.strokeStyle, ctx.lineWidth, 0);
+				// layers.push(l);
+				// console.log("touch "+layers);
 			}
 			// console.log(evt);
 		}
 	};
 
 	// Touch Events
-	overlay.addEventListener('touchstart', draw.start, false);
-	overlay.addEventListener('touchend', draw.end, false);
-	overlay.addEventListener('touchmove', draw.move, false);
+	// overlay.addEventListener('touchstart', draw.start, false);
+	// overlay.addEventListener('touchend', draw.end, false);
+	// overlay.addEventListener('touchmove', draw.move, false);
 
 	// Disable Page Move
 	document.body.addEventListener('touchmove',function(evt){
@@ -186,12 +175,7 @@ function paletteInit() {
 		hide: function () {
 		},
 		change: function(color) {
-			ctx = document.getElementById("board").getContext("2d");
-			octx = document.getElementById("overlay").getContext("2d");
-			ctx.strokeStyle = color.toRgbString();
-			ctx.fillStyle = color.toRgbString();
-			octx.strokeStyle = color.toRgbString();
-			octx.fillStyle = color.toRgbString();
+			wColor = color.toRgbString();
 		},
 		palette: [
 			["rgb(0, 0, 0)", "rgb(67, 67, 67)", "rgb(102, 102, 102)",
