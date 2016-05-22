@@ -1,25 +1,42 @@
 //thanks to http://codepen.io/mikethedj4/pen/cnCAL
 
-function Layer(path, color, thickness, drawType) { //deal with text and shapes later
-	this.path = path;
-	this.color = color; //the color of the stroke
-	this.thickness = thickness;
-	this.drawType = drawType; //0 for stroke, 1 for fill
-}
-Layer.prototype.toString = function() {
-	return "strokeStyle: "+this.stroke+", fillStyle: "+this.fill+", thickness: "+this.thickness+"\n";
-};
-Layer.prototype.containsPoint = function(x, y) {
-	var ctx = document.getElementById("board").getContext("2d");
-	return ctx.isPointInStroke(this.path, x, y);
-};
-
-var layers = [];
 var wColor = "#000";
 
 window.onload = function() {
+	color = document.getElementById("color");
+	thickness = document.getElementById("strokeSize");
+	thicknessVal = document.getElementById("strokeSizeVal");
+	if (!color || !thickness || !thicknessVal) {
+		var errorText = document.createElement("p");
+		errorText.innerHTML = "Toolbar setup error";
+		document.body.appendChild(errorText);
+		return;
+	}
+
+	//toolbar setup, do this first so height calculations work out
+	paletteInit();
+	color.value="#000";
+	thickness.value="5";
+	thickness.min="1";
+	thickness.max="300";
+	thicknessVal.value = "5";
+	thickness.addEventListener("input", function() {
+		thicknessVal.value = this.value;
+	});
+	thicknessVal.addEventListener("change", function() {
+		num = parseInt(this.value);
+		if (isNaN(num) || num<1 || num>300) {
+			this.value = thickness.value;
+			alert("Please enter a valid integer between 1 and 300");
+		}
+		else {
+			this.value = num;
+			thickness.value = num;
+		}
+	})
+
 	// Get DOM elements and null check
-	var toolBar = document.getElementById("toolbar");	
+	var toolBar = document.getElementById("toolbar");
 	var svgDiv = document.getElementById("board-container");
 	var svg = document.getElementById("board");
 
@@ -32,13 +49,13 @@ window.onload = function() {
 	}
 
 	// Fill Window Width and Height
-	var toolHeight = toolBar.style.height;
+	var toolHeight = toolBar.clientHeight;
 	var width = window.innerWidth;
 
 	svgDiv.style.width = width.toString() + "px";
-	svgDiv.style.height = (window.innerHeight - toolHeight - 15).toString() + "px";
+	svgDiv.style.height = (window.innerHeight - toolHeight - 10).toString() + "px";
 	svg.style.width = width.toString() + "px";
-	svg.style.height = (window.innerHeight - toolHeight - 15).toString() + "px";
+	svg.style.height = (window.innerHeight - toolHeight - 10).toString() + "px";
 
 	var svgSnap = Snap("#board");
 
@@ -108,16 +125,15 @@ window.onload = function() {
 		if (!isMoved) {
 			canvasX = e.pageX - svgDiv.offsetLeft;
 			canvasY = e.pageY - svgDiv.offsetTop;
-			svgSnap.circle(canvasX, canvasY, document.getElementById("strokeSize").value/2);
+			point = svgSnap.circle(canvasX, canvasY, document.getElementById("strokeSize").value/2);
+			point.attr({fill: wColor})
 		}
 	});
-	
 
 	// Disable Page Move
 	document.body.addEventListener('touchmove',function(evt){
 		evt.preventDefault();
 	},false);
-	paletteInit();
 };
 
 function paletteInit() {
@@ -130,6 +146,7 @@ function paletteInit() {
 		showPalette: true,
 		showSelectionPalette: true,
 		maxSelectionSize: 10,
+		hideAfterPaletteSelect: true,
 		preferredFormat: "hex",
 		localStorageKey: "color_selector",
 		move: function (color) {

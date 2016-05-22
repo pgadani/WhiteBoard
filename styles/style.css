@@ -1,26 +1,31 @@
 body {
 	margin: 0;
 	padding: 0;
+	font-family:sans-serif;
 }
-
+.sp-replacer {
+	border: 1px solid gray;
+}
 .full-spectrum .sp-palette {
 	max-width: 200px;
 }
 
 #toolbar {
-	margin:5px;
-	border-bottom:2px;
-	border-color: black;
+	margin: 5px;
 }
 #board {
 	margin: 0;
 	cursor: crosshair;
 	position: absolute;
 }
-input {
-	border: 2px solid gray;
+#strokeSize {
+	width: 300px;
+	height: 1em;
+}
+#strokeSizeVal {
+	border: 1px solid gray;
 	border-radius: 4px;
 	width: 40px;
 	height: 25px;
-	font-size: 18px;
+	font-size: 1em;
 }

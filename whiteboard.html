@@ -2,8 +2,8 @@
 <html>
 <head>
 	<title>Whiteboard</title>
-	<link rel="stylesheet" href="styles/style.css">
 	<link rel="stylesheet" href="styles/spectrum.css" />
+	<link rel="stylesheet" href="styles/style.css">
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
 	<script src="scripts/spectrum.js"></script>
 	<script src="scripts/snap.svg.js"></script>
@@ -11,8 +11,9 @@
 </head>
 <body>
 	<div id="toolbar">
-		<input type="text" id="color" value="#000000">
-		<input type="text" id="strokeSize" value="5">
+		<input type="text" id="color">
+		<input type="range" id="strokeSize">
+		<input type="text" id="strokeSizeVal">
 	</div>
 	<div id="board-container">
 		<svg id="board"></svg>
