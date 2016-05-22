@@ -90,7 +90,7 @@ window.onload = function() {
 			pInfo += " L" + canvasX.toString() + " " + canvasY.toString();
 			path.attr({d: pInfo});
 		}
-		else {
+		// else {
 			// var found = false;
 			// layers.forEach(function(l) {
 			// 	if (l.containsPoint(canvasX, canvasY)) {
@@ -114,7 +114,7 @@ window.onload = function() {
 			// if (!found) {
 			// 	octx.clearRect(0,0,canvas.width, canvas.height);
 			// }
-		}
+		// }
 	})
 	.mouseup(function(e) {
 		if (e.type === 'touchend') {
@@ -123,6 +123,7 @@ window.onload = function() {
 		}
 		isDown = false;
 		if (!isMoved) {
+			path.remove();
 			canvasX = e.pageX - svgDiv.offsetLeft;
 			canvasY = e.pageY - svgDiv.offsetTop;
 			point = svgSnap.circle(canvasX, canvasY, document.getElementById("strokeSize").value/2);
@@ -146,7 +147,6 @@ function paletteInit() {
 		showPalette: true,
 		showSelectionPalette: true,
 		maxSelectionSize: 10,
-		hideAfterPaletteSelect: true,
 		preferredFormat: "hex",
 		localStorageKey: "color_selector",
 		move: function (color) {
