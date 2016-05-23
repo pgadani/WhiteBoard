@@ -34,3 +34,38 @@ html, body {
 	/*height: 25px;*/
 	font-size: 1em;
 }
+
+/*	for selecting the mode, mostly copy pasta'd, will modify later 
+	http://jsfiddle.net/La8wQ/313/ */
+.action-type input{
+    margin:0;padding:0;
+    -webkit-appearance:none;
+       -moz-appearance:none;
+            appearance:none;
+}
+
+.action-type input:checked +.fa{
+	border: 1px solid gray;
+    -webkit-filter: none;
+       -moz-filter: none;
+            filter: none;
+}
+
+.fa{
+    cursor:pointer;
+    background-size:contain;
+    background-repeat:no-repeat;
+    display:inline-block;
+    /*width:32px;height:32px;*/
+    /*-webkit-transition: all 100ms ease-in;
+       -moz-transition: all 100ms ease-in;
+            transition: all 100ms ease-in;*/
+    -webkit-filter: opacity(50%);
+       -moz-filter: opacity(50%);
+            filter: opacity(50%);
+}
+.fa:hover{
+    -webkit-filter: opacity(75%);
+       -moz-filter: opacity(75%);
+            filter: opacity(75%);
+}
