@@ -7,14 +7,14 @@ window.onload = function() {
 	//disabling dragging since firefox has glitches with dragging svg elements
 	document.body.ondragstart = function() {
 		return false;
-	}
+	};
 	document.body.ondrop = function() {
 		return false;
-	}
+	};
 
-	color = document.getElementById("color");
-	thickness = document.getElementById("strokeSize");
-	thicknessVal = document.getElementById("strokeSizeVal");
+	var color = document.getElementById("color");
+	var thickness = document.getElementById("strokeSize");
+	var thicknessVal = document.getElementById("strokeSizeVal");
 	if (!color || !thickness || !thicknessVal) {
 		var errorText = document.createElement("p");
 		errorText.innerHTML = "Toolbar setup error";
@@ -33,7 +33,7 @@ window.onload = function() {
 		thicknessVal.value = this.value;
 	});
 	thicknessVal.addEventListener("change", function() {
-		num = parseInt(this.value);
+		var num = parseInt(this.value);
 		if (isNaN(num) || num<1 || num>300) {
 			this.value = thickness.value;
 			alert("Please enter an integer between 1 and 300");
@@ -42,7 +42,7 @@ window.onload = function() {
 			this.value = num;
 			thickness.value = num;
 		}
-	})
+	});
 
 	// Get DOM elements and null check
 	var toolBar = document.getElementById("toolbar");
@@ -124,7 +124,7 @@ window.onload = function() {
 		var height = bbox.height;
 		if (path.type == "path") {
 			//not a circle, which has the correct bbox for the stroke thickness
-			offset = document.getElementById("strokeSize").value/2;
+			var offset = document.getElementById("strokeSize").value/2;
 			x -= offset;
 			y -= offset;
 			width += 2*offset;
@@ -137,14 +137,14 @@ window.onload = function() {
 				stroke:"gray"
 			}), //forming the path for the bounding box
 			show: function() {
-				if (this.elem.parent()==null) {
+				if (this.elem.parent()===null) {
 					this.elem.appendTo(svgSnap);
 				}
 			},
 			hide: function() {
 				this.elem.remove();
 			}
-		}
+		};
 		path
 		.mouseover(function() {
 			if (!isDown) {
