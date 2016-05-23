@@ -48,8 +48,11 @@ window.onload = function() {
 	var toolBar = document.getElementById("toolbar");
 	var svgDiv = document.getElementById("board-container");
 	var svg = document.getElementById("board");
+	// These are the buttons to select the type of action
+	var paint = document.getElementById("paint");
+	var select = document.getElementById("select");
 
-	if (!toolBar || !svgDiv || !svg) {
+	if (!toolBar || !svgDiv || !svg || !paint || !select) {
 		// error handling
 		var errorText = document.createElement("p");
 		errorText.innerHTML = "Setup error.";
@@ -68,6 +71,14 @@ window.onload = function() {
 
 	var svgSnap = Snap("#board");
 
+	// Change Cursors for different Action Types
+	paint.addEventListener("click", function c() {
+		svg.style.cursor = "crosshair";
+	});
+	select.addEventListener("click", function c() {
+		svg.style.cursor = "pointer";
+	});
+
 	// Mouse Event Handlers
 	var isDown = false;
 	var isMoved = false;
@@ -77,83 +88,95 @@ window.onload = function() {
 
 	svgSnap
 	.mousedown(function(e) {
-		isDown = true;
-		isMoved = false;
-		canvasX = e.pageX - svgDiv.offsetLeft;
-		canvasY = e.pageY - svgDiv.offsetTop;
-		pInfo = "M" + canvasX + "," + canvasY;
-		path = svgSnap.path(pInfo);
-		path.attr({
-			strokeWidth: document.getElementById("strokeSize").value,
-			stroke: wColor,
-			fill: "none",
-			strokeLinecap: "round",
-			strokeLinejoin: "round"
-		});
-	})
-	.mousemove(function(e) {
-		if (isDown) {
+		if (paint.checked) { // This is when the user wants to draw
+			isDown = true;
+			isMoved = false;
 			canvasX = e.pageX - svgDiv.offsetLeft;
 			canvasY = e.pageY - svgDiv.offsetTop;
-			isMoved = true;
-			pInfo += " L" + canvasX.toString() + " " + canvasY.toString();
-			path.attr({d: pInfo});
+			pInfo = "M" + canvasX + "," + canvasY;
+			path = svgSnap.path(pInfo);
+			path.attr({
+				strokeWidth: document.getElementById("strokeSize").value,
+				stroke: wColor,
+				fill: "none",
+				strokeLinecap: "round",
+				strokeLinejoin: "round"
+			});
 		}
-		// else {
-		// 	var element = Snap.getElementByPoint(e.pageX, e.pageY);
-		// 	if (element.type=="path") {
-		// 		element.attr({stroke:"rgb(128,128,128)"})
-		// 	}
-		// }
+		else if (select.checked) { // When the user wants to select
+			svg.style.cursor = "move";
+		}
 	})
-	.mouseup(function(e) {
-		if (e.type != 'touchend') {
-			if (!isMoved) {
-				path.remove();
+	.mousemove(function(e) {
+		if (paint.checked) { //When the user wants to draw
+			if (isDown) {
 				canvasX = e.pageX - svgDiv.offsetLeft;
 				canvasY = e.pageY - svgDiv.offsetTop;
-				path = svgSnap.circle(canvasX, canvasY, document.getElementById("strokeSize").value/2);
-				path.attr({fill: wColor});
+				isMoved = true;
+				pInfo += " L" + canvasX.toString() + " " + canvasY.toString();
+				path.attr({d: pInfo});
 			}
+			// else {
+			// 	var element = Snap.getElementByPoint(e.pageX, e.pageY);
+			// 	if (element.type=="path") {
+			// 		element.attr({stroke:"rgb(128,128,128)"})
+			// 	}
+			// }
 		}
-		isDown = false;
-		var bbox = path.getBBox();
-		var x = bbox.x;
-		var y = bbox.y;
-		var width = bbox.width;
-		var height = bbox.height;
-		if (path.type == "path") {
-			//not a circle, which has the correct bbox for the stroke thickness
-			var offset = document.getElementById("strokeSize").value/2;
-			x -= offset;
-			y -= offset;
-			width += 2*offset;
-			height += 2*offset;
-		}
-		path.bbox = {
-			elem: svgSnap.rect(x,y,width, height).attr({
-				fill:"none",
-				strokeWidth:"1px",
-				stroke:"gray"
-			}), //forming the path for the bounding box
-			show: function() {
-				if (this.elem.parent()===null) {
-					this.elem.appendTo(svgSnap);
+	})
+	.mouseup(function(e) {
+		if (paint.checked) { // When the user wants to draw
+			if (e.type != 'touchend') {
+				if (!isMoved) {
+					path.remove();
+					canvasX = e.pageX - svgDiv.offsetLeft;
+					canvasY = e.pageY - svgDiv.offsetTop;
+					path = svgSnap.circle(canvasX, canvasY, document.getElementById("strokeSize").value/2);
+					path.attr({fill: wColor});
 				}
-			},
-			hide: function() {
-				this.elem.remove();
 			}
-		};
-		path
-		.mouseover(function() {
-			if (!isDown) {
-				this.bbox.show();
+			isDown = false;
+			var bbox = path.getBBox();
+			var x = bbox.x;
+			var y = bbox.y;
+			var width = bbox.width;
+			var height = bbox.height;
+			if (path.type == "path") {
+				//not a circle, which has the correct bbox for the stroke thickness
+				var offset = document.getElementById("strokeSize").value/2;
+				x -= offset;
+				y -= offset;
+				width += 2*offset;
+				height += 2*offset;
 			}
-		})
-		.mouseout(function() {
-			this.bbox.hide();
-		});
+			path.bbox = {
+				elem: svgSnap.rect(x,y,width, height).attr({
+					fill:"none",
+					strokeWidth:"1px",
+					stroke:"gray"
+				}), //forming the path for the bounding box
+				show: function() {
+					if (this.elem.parent()===null) {
+						this.elem.appendTo(svgSnap);
+					}
+				},
+				hide: function() {
+					this.elem.remove();
+				}
+			};
+			path
+			.mouseover(function() {
+				if (!isDown) {
+					this.bbox.show();
+				}
+			})
+			.mouseout(function() {
+				this.bbox.hide();
+			});
+		}
+		else if (select.checked) { // When the user wants to select
+			svg.style.cursor = "pointer";
+		}
 	});
 
 	// Disable Page Move
