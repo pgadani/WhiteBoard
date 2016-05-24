@@ -1,5 +1,6 @@
 var svgSnap;
 var wColor = "#000";
+var pointerType = 0; //0 for paint, 1 for select
 var actionsToUndo = [];
 var actionsToRedo = [];
 var selectedElements = [];
@@ -23,13 +24,13 @@ PathAction.prototype.undoAction = function() {
 	}
 
 	if (this.post) {
-		this.post.remove();
+		this.post.removeAll();
 	}
 };
 
 PathAction.prototype.redoAction = function() {
 	if (this.prev) {
-		this.prev.remove();
+		this.prev.removeAll();
 	}
 
 	if (this.post) {
@@ -91,43 +92,7 @@ ColorAction.prototype.redoAction = function() {
 	}
 }
 
-function actionButtonSetup() {
-	var undoButton = document.getElementById("undo");
-	var redoButton = document.getElementById("redo");
-	if (!undoButton || !redoButton) {
-		reportError();
-		return;
-	}
-
-	undoButton.addEventListener('click', function() {
-		if (actionsToUndo.length > 0) {
-			var currAction = actionsToUndo.pop();
-			currAction.undoAction();
-			actionsToRedo.push(currAction);
-		}
-	});
-
-	redoButton.addEventListener('click', function() {
-		if (actionsToRedo.length > 0) {
-			var currAction = actionsToRedo.pop();
-			currAction.redoAction();
-			actionsToUndo.push(currAction);
-		}
-	});
-}
-
-window.onload = function() {
-	// set up undo and redo
-	actionButtonSetup();
-
-	//disabling dragging since firefox has glitches with dragging svg elements
-	document.body.ondragstart = function() {
-		return false;
-	};
-	document.body.ondrop = function() {
-		return false;
-	};
-
+function toolbarSetup() {
 	var color = document.getElementById("color");
 	var thickness = document.getElementById("strokeSize");
 	var thicknessVal = document.getElementById("strokeSizeVal");
@@ -157,14 +122,56 @@ window.onload = function() {
 			thickness.value = num;
 		}
 	});
+	var undoButton = document.getElementById("undo");
+	var redoButton = document.getElementById("redo");
+	var paint = document.getElementById("paint");
+	var select = document.getElementById("select");
+	if (!undoButton || !redoButton || !paint || !select) {
+		reportError();
+		return;
+	}
+	undoButton.addEventListener("click", function() {
+		if (actionsToUndo.length > 0) {
+			var currAction = actionsToUndo.pop();
+			currAction.undoAction();
+			actionsToRedo.push(currAction);
+		}
+	});
+	redoButton.addEventListener("click", function() {
+		if (actionsToRedo.length > 0) {
+			var currAction = actionsToRedo.pop();
+			currAction.redoAction();
+			actionsToUndo.push(currAction);
+		}
+	});
+	paint.classList.add("selected");
+	paint.addEventListener("click", function() {
+		pointerType = 0;
+		this.classList.toggle("selected");
+		select.classList.toggle("selected");
+	});
+	select.addEventListener("click", function() {
+		pointerType = 1;
+		this.classList.toggle("selected");
+		paint.classList.toggle("selected");
+	})
+}
+
+window.onload = function() {
+	toolbarSetup();
+
+	//disabling dragging since firefox has glitches with dragging svg elements
+	document.body.ondragstart = function() {
+		return false;
+	};
+	document.body.ondrop = function() {
+		return false;
+	};
 
 	// Get DOM elements and null check
 	var toolBar = document.getElementById("toolbar");
 	var svgDiv = document.getElementById("board-container");
 	var svg = document.getElementById("board");
-	// These are the buttons to select the type of action
-	var paint = document.getElementById("paint");
-	var select = document.getElementById("select");
 
 	if (!toolBar || !svgDiv || !svg || !paint || !select) {
 		// error handling
@@ -208,13 +215,12 @@ window.onload = function() {
 			selectedElements = [];
 		}
 		pathClicked = false;
-		if (paint.checked) { // This is when the user wants to draw
+		if (pointerType==0) { // This is when the user wants to draw
 			isDown = true;
 			isMoved = false;
-			// canvasX = e.pageX - svgDiv.offsetLeft;
-			// canvasY = e.pageY - svgDiv.offsetTop;
-			// pInfo = "M" + canvasX + "," + canvasY;
-			pInfo = "M"+e.layerX+","+e.layerY;
+			canvasX = e.pageX - svgDiv.offsetLeft;
+			canvasY = e.pageY - svgDiv.offsetTop;
+			pInfo = "M"+canvasX+","+canvasY;
 			path = svgSnap.path(pInfo);
 			path.attr({
 				strokeWidth: document.getElementById("strokeSize").value,
@@ -224,32 +230,32 @@ window.onload = function() {
 				strokeLinejoin: "round"
 			});
 		}
-		else if (select.checked) { // When the user wants to select
+		else if (pointerType==1) { // When the user wants to select
 			svg.style.cursor = "move";
 		}
 	})
 	.mousemove(function(e) {
-		if (paint.checked && isDown) { //When the user wants to draw
-			// canvasX = e.pageX - svgDiv.offsetLeft;
-			// canvasY = e.pageY - svgDiv.offsetTop;
+		if (pointerType==0 && isDown) { //When the user wants to draw
+			canvasX = e.pageX - svgDiv.offsetLeft;
+			canvasY = e.pageY - svgDiv.offsetTop;
 			isMoved = true;
-			// pInfo += " L" + canvasX.toString() + " " + canvasY.toString();
-			pInfo += "L"+e.layerX+","+e.layerY;
+			pInfo += "L"+canvasX+","+canvasY;
 			path.attr({d: pInfo});
 		}
-		else if (select.checked && e.buttons==1 && selectedElements.length>0) {
+		else if (pointerType==1 && e.buttons==1 && selectedElements.length>0) {
 			selectedElements.forEach(function(elem) {
 				transM = elem.transform().localMatrix;
-				transM.translate(e.layerX - dragX, e.layerY - dragY);
+				transM.translate(e.pageX - dragX, e.pageY - dragY);
 				elem.transformAll(transM);
 			})
-			dragX = e.layerX;
-			dragY = e.layerY;
+			dragX = e.pageX;
+			dragY = e.pageY;
+			//we can use pageX and pageY here without worrying about the offset since we only need differences in values
 		}
 	})
 	.mouseup(function(e) {
 		isDown = false;
-		if (paint.checked) { // When the user wants to draw
+		if (pointerType==0) { // When the user wants to draw
 			if (e.type != "touchend" && !isMoved) {
 				path.remove();
 				canvasX = e.pageX - svgDiv.offsetLeft;
@@ -313,25 +319,30 @@ window.onload = function() {
 				this.bbox.elem.transform(transM);
 				this.bbox.recirc.transform(transM);
 			}
+			path.removeAll = function() {
+				this.remove();
+				this.bbox.elem.remove();
+				this.bbox.recirc.remove();
+			}
 			path
 			.mouseover(function() {
-				if (select.checked) {
+				if (pointerType==1) {
 					this.bbox.show();
 				}
 			})
 			.mousedown(function(evt) {
 				pathClicked = true;
-				if (select.checked) {
+				if (pointerType==1) {
 					selectedElements.forEach(function(item) {
 						item.bbox.hide();
 					});
 					selectedElements = [];
 					selectedElements.push(this);
 					this.bbox.show();
-					dragX = evt.layerX;
-					dragY = evt.layerY;
-					beginDragX = evt.layerX;
-					beginDragY = evt.layerY;
+					dragX = evt.pageX;
+					dragY = evt.pageY;
+					beginDragX = evt.pageX;
+					beginDragY = evt.pageY;
 				}
 			})
 			.mouseout(function() {
@@ -343,11 +354,13 @@ window.onload = function() {
 			actionsToUndo.push(new PathAction(null, path));
 			actionsToRedo = [];
 		}
-		else if (select.checked) { // When the user wants to select
+		else if (pointerType==1) { // When the user wants to select
 			svg.style.cursor = "pointer";
-			if (selectedElements.length>0) {
+			var changeX = e.pageX - beginDragX;
+			var changeY = e.pageY - beginDragY;
+			if (selectedElements.length>0 && (changeX!=0 || changeY!=0)) {
 				elems = selectedElements;
-				actionsToUndo.push(new TranslateAction(elems, e.layerX - beginDragX, e.layerY - beginDragY));
+				actionsToUndo.push(new TranslateAction(elems, changeX, changeY));
 				actionsToRedo = [];
 			}
 		}
