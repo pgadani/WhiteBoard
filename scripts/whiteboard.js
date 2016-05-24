@@ -3,8 +3,8 @@ var wColor = "#000";
 var actionsToUndo = [];
 var actionsToRedo = [];
 var selectedElements = [];
-var dragX = 0
-var dragY = 0;
+var beginDragX, beginDragY;
+var dragX, dragY;
 
 function reportError() {
 	var errorText = document.createElement("p");
@@ -36,6 +36,37 @@ PathAction.prototype.redoAction = function() {
 		svgSnap.append(this.post);
 	}
 };
+
+//takes the transformation strings
+var TranslateAction = function(elems, changeX, changeY) {
+	this.elems = elems; //eventually to be an array of elements
+	this.changeX = changeX;
+	this.changeY = changeY;
+}
+
+TranslateAction.prototype.undoAction = function() {
+	changeX = this.changeX;
+	changeY = this.changeY;
+	if (this.elems) {
+		this.elems.forEach(function(elem) {
+			transM = elem.transform().localMatrix;
+			transM.translate(-changeX, -changeY);
+			elem.transform(transM);
+			elem.bbox.elem.transform(transM);
+		})
+	}
+}
+
+TranslateAction.prototype.redoAction = function() {
+	if (this.elems) {
+		this.elems.forEach(function(elem) {
+			transM = elem.transform().localMatrix;
+			transM.translate(this.changeX, this.changeY);
+			elem.transform(transM);
+			elem.bbox.elem.transform(transM);
+		})
+	}
+}
 
 function actionButtonSetup() {
 	var undoButton = document.getElementById("undo");
@@ -255,20 +286,10 @@ window.onload = function() {
 					selectedElements.push(this);
 					dragX = evt.layerX;
 					dragY = evt.layerY;
-					// this.clickX = evt.layerX;
-					// this.clickY = evt.layerY;
-					// this.transM = this.transform().localMatrix;
+					beginDragX = evt.layerX;
+					beginDragY = evt.layerY;
 				}
 			})
-			// .mousemove(function(evt) {
-			// 	//reimplement this keeping track of clicked/selected elements and moving all of them (would work even for fast movements that "leave" the path)
-			// 	if (select.checked && evt.buttons==1) {
-			// 		console.log("dragging");
-			// 		newM = this.transM.clone().translate(evt.layerX - this.clickX, evt.layerY - this.clickY);
-			// 		this.transform(newM);
-			// 		this.bbox.elem.transform(newM);
-			// 	}
-			// })
 			.mouseout(function() {
 				this.bbox.hide();
 			});
@@ -278,7 +299,12 @@ window.onload = function() {
 		}
 		else if (select.checked) { // When the user wants to select
 			svg.style.cursor = "pointer";
-			selectedElements.splice(0,selectedElements.length);
+			if (selectedElements.length>0) {
+				elems = selectedElements;
+				actionsToUndo.push(new TranslateAction(elems, e.layerX - beginDragX, e.layerY - beginDragY));
+				actionsToRedo = [];
+				selectedElements = [];
+			}
 		}
 	});
 
