@@ -20,7 +20,9 @@ var PathAction = function(prev, post) {
 
 PathAction.prototype.undoAction = function() {
 	if (this.prev) {
-		svgSnap.append(this.prev);
+		this.prev.forEach(function(item) {
+			svgSnap.append(item);
+		})
 	}
 
 	if (this.post) {
@@ -30,7 +32,9 @@ PathAction.prototype.undoAction = function() {
 
 PathAction.prototype.redoAction = function() {
 	if (this.prev) {
-		this.prev.removeAll();
+		this.prev.forEach(function(item) {
+			item.removeAll();
+		})
 	}
 
 	if (this.post) {
@@ -126,7 +130,8 @@ function toolbarSetup() {
 	var redoButton = document.getElementById("redo");
 	var paint = document.getElementById("paint");
 	var select = document.getElementById("select");
-	if (!undoButton || !redoButton || !paint || !select) {
+	var remove = document.getElementById("remove");
+	if (!undoButton || !redoButton || !paint || !select || !remove) {
 		reportError();
 		return;
 	}
@@ -154,7 +159,13 @@ function toolbarSetup() {
 		pointerType = 1;
 		this.classList.toggle("selected");
 		paint.classList.toggle("selected");
-	})
+	});
+	remove.addEventListener("click", function() {
+		actionsToUndo.push(new PathAction(selectedElements, null));
+		selectedElements.forEach(function(item) {
+			item.removeAll();
+		});
+	});
 }
 
 window.onload = function() {
