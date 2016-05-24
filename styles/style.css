@@ -34,8 +34,10 @@ html, body {
 	/*height: 25px;*/
 	font-size: 1em;
 }
-
-/*	for selecting the mode, mostly copy pasta'd, will modify later 
+form.action-type {
+	display: inline;
+}
+/*	for selecting the mode, mostly copy pasta'd, will modify later
 	http://jsfiddle.net/La8wQ/313/ */
 .action-type input{
     margin:0;padding:0;

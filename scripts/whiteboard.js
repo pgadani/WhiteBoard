@@ -108,34 +108,24 @@ window.onload = function() {
 		}
 	})
 	.mousemove(function(e) {
-		if (paint.checked) { //When the user wants to draw
-			if (isDown) {
-				canvasX = e.pageX - svgDiv.offsetLeft;
-				canvasY = e.pageY - svgDiv.offsetTop;
-				isMoved = true;
-				pInfo += " L" + canvasX.toString() + " " + canvasY.toString();
-				path.attr({d: pInfo});
-			}
-			// else {
-			// 	var element = Snap.getElementByPoint(e.pageX, e.pageY);
-			// 	if (element.type=="path") {
-			// 		element.attr({stroke:"rgb(128,128,128)"})
-			// 	}
-			// }
+		if (paint.checked && isDown) { //When the user wants to draw
+			canvasX = e.pageX - svgDiv.offsetLeft;
+			canvasY = e.pageY - svgDiv.offsetTop;
+			isMoved = true;
+			pInfo += " L" + canvasX.toString() + " " + canvasY.toString();
+			path.attr({d: pInfo});
 		}
 	})
 	.mouseup(function(e) {
+		isDown = false;
 		if (paint.checked) { // When the user wants to draw
-			if (e.type != 'touchend') {
-				if (!isMoved) {
-					path.remove();
-					canvasX = e.pageX - svgDiv.offsetLeft;
-					canvasY = e.pageY - svgDiv.offsetTop;
-					path = svgSnap.circle(canvasX, canvasY, document.getElementById("strokeSize").value/2);
-					path.attr({fill: wColor});
-				}
+			if (e.type != "touchend" && !isMoved) {
+				path.remove();
+				canvasX = e.pageX - svgDiv.offsetLeft;
+				canvasY = e.pageY - svgDiv.offsetTop;
+				path = svgSnap.circle(canvasX, canvasY, document.getElementById("strokeSize").value/2);
+				path.attr({fill: wColor});
 			}
-			isDown = false;
 			var bbox = path.getBBox();
 			var x = bbox.x;
 			var y = bbox.y;
@@ -150,13 +140,16 @@ window.onload = function() {
 				height += 2*offset;
 			}
 			path.bbox = {
-				elem: svgSnap.rect(x,y,width, height).attr({
-					fill:"none",
-					strokeWidth:"1px",
-					stroke:"gray"
-				}), //forming the path for the bounding box
+				elem: svgSnap
+					.rect(x,y,width, height)
+					.attr({
+						fill: "none",
+						strokeWidth: "1px",
+						stroke: "gray"
+					})
+					.remove(), //forming the path for the bounding box
 				show: function() {
-					if (this.elem.parent()===null) {
+					if (this.elem.parent() === null) {
 						this.elem.appendTo(svgSnap);
 					}
 				},
@@ -166,8 +159,24 @@ window.onload = function() {
 			};
 			path
 			.mouseover(function() {
-				if (!isDown) {
+				if (select.checked) {
 					this.bbox.show();
+				}
+			})
+			.mousedown(function(evt) {
+				if (select.checked) {
+					this.clickX = evt.layerX;
+					this.clickY = evt.layerY;
+					this.transM = this.transform().localMatrix;
+				}
+			})
+			.mousemove(function(evt) {
+				//reimplement this keeping track of clicked/selected elements and moving all of them (would work even for fast movements that "leave" the path)
+				if (select.checked && evt.buttons==1) {
+					console.log("dragging");
+					newM = this.transM.clone().translate(evt.layerX - this.clickX, evt.layerY - this.clickY);
+					this.transform(newM);
+					this.bbox.elem.transform(newM);
 				}
 			})
 			.mouseout(function() {
