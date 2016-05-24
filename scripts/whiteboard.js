@@ -13,14 +13,14 @@ function reportError() {
 	document.body.appendChild(errorText);
 }
 
-var PathAction = function(pre, post) {
-	this.pre = pre;
+var PathAction = function(prev, post) {
+	this.prev = prev;
 	this.post = post;
 };
 
 PathAction.prototype.undoAction = function() {
-	if (this.pre) {
-		svgSnap.append(this.pre);
+	if (this.prev) {
+		svgSnap.append(this.prev);
 	}
 
 	if (this.post) {
@@ -29,8 +29,8 @@ PathAction.prototype.undoAction = function() {
 };
 
 PathAction.prototype.redoAction = function() {
-	if (this.pre) {
-		this.pre.remove();
+	if (this.prev) {
+		this.prev.remove();
 	}
 
 	if (this.post) {
@@ -52,8 +52,7 @@ TranslateAction.prototype.undoAction = function() {
 		this.elems.forEach(function(elem) {
 			transM = elem.transform().localMatrix;
 			transM.translate(-changeX, -changeY);
-			elem.transform(transM);
-			elem.bbox.elem.transform(transM);
+			elem.transformAll(transM);
 		})
 	}
 }
@@ -63,8 +62,34 @@ TranslateAction.prototype.redoAction = function() {
 		this.elems.forEach(function(elem) {
 			transM = elem.transform().localMatrix;
 			transM.translate(this.changeX, this.changeY);
-			elem.transform(transM);
-			elem.bbox.elem.transform(transM);
+			elem.transformAll(transM);
+		})
+	}
+}
+
+// for color changes
+var ColorAction = function(elems, prev, post) {
+	this.elems = elems;
+	console.log(prev);
+	this.prev = prev;
+	console.log(this.prev);
+	this.post = post;
+}
+
+ColorAction.prototype.undoAction = function() {
+	prev = this.prev;
+	if (this.elems) {
+		this.elems.forEach(function(elem) {
+			elem.attr("stroke", prev);
+		})
+	}
+}
+
+ColorAction.prototype.redoAction = function() {
+	post = this.post;
+	if (this.elems) {
+		this.elems.forEach(function(elem) {
+			elem.attr("stroke", post);
 		})
 	}
 }
@@ -181,9 +206,17 @@ window.onload = function() {
 	var canvasX, canvasY;
 	var path;
 	var pInfo;
+	var pathClicked = false;
 
 	svgSnap
 	.mousedown(function(e) {
+		if (!pathClicked) {
+			selectedElements.forEach(function(item) {
+				item.bbox.hide();
+			});
+			selectedElements = [];
+		}
+		pathClicked = false;
 		if (pointerType==0) { // This is when the user wants to draw
 			isDown = true;
 			isMoved = false;
@@ -215,8 +248,7 @@ window.onload = function() {
 			selectedElements.forEach(function(elem) {
 				transM = elem.transform().localMatrix;
 				transM.translate(e.pageX - dragX, e.pageY - dragY);
-				elem.transform(transM);
-				elem.bbox.elem.transform(transM);
+				elem.transformAll(transM);
 			})
 			dragX = e.pageX;
 			dragY = e.pageY;
@@ -246,6 +278,16 @@ window.onload = function() {
 				width += 2*offset;
 				height += 2*offset;
 			}
+			var c1 = svgSnap.circle(x, y, 2);
+			var c2 = svgSnap.circle(x+width/2, y, 2);
+			var c3 = svgSnap.circle(x+width, y, 2);
+			var c4 = svgSnap.circle(x+width, y+height/2, 2);
+			var c5 = svgSnap.circle(x+width, y+height, 2);
+			var c6 = svgSnap.circle(x+width/2, y+height, 2);
+			var c7 = svgSnap.circle(x, y+height, 2);
+			var c8 = svgSnap.circle(x, y+height/2, 2);
+			var c9 = svgSnap.circle(x+width/2, y-20, 2);
+			var l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
 			path.bbox = {
 				elem: svgSnap
 					.rect(x,y,width, height)
@@ -255,15 +297,30 @@ window.onload = function() {
 						stroke: "gray"
 					})
 					.remove(), //forming the path for the bounding box
+				recirc: svgSnap.g()
+					.add(c1, c2, c3, c4, c5, c6, c7, c8, c9, l)
+					.attr({
+						fill: "black",
+						strokeWidth: "1px",
+						stroke: "gray"
+					})
+					.remove(),
 				show: function() {
 					if (this.elem.parent() === null) {
 						this.elem.appendTo(svgSnap);
+						this.recirc.appendTo(svgSnap);
 					}
 				},
 				hide: function() {
 					this.elem.remove();
+					this.recirc.remove();
 				}
-			};
+			}
+			path.transformAll = function(transM) {
+				this.transform(transM);
+				this.bbox.elem.transform(transM);
+				this.bbox.recirc.transform(transM);
+			}
 			path
 			.mouseover(function() {
 				if (pointerType==1) {
@@ -271,8 +328,14 @@ window.onload = function() {
 				}
 			})
 			.mousedown(function(evt) {
+				pathClicked = true;
 				if (pointerType==1) {
+					selectedElements.forEach(function(item) {
+						item.bbox.hide();
+					});
+					selectedElements = [];
 					selectedElements.push(this);
+					this.bbox.show();
 					dragX = evt.pageX;
 					dragY = evt.pageY;
 					beginDragX = evt.pageX;
@@ -280,7 +343,9 @@ window.onload = function() {
 				}
 			})
 			.mouseout(function() {
-				this.bbox.hide();
+				if (!selectedElements.includes(this)) {
+					this.bbox.hide();
+				}
 			});
 
 			actionsToUndo.push(new PathAction(null, path));
@@ -292,7 +357,6 @@ window.onload = function() {
 				elems = selectedElements;
 				actionsToUndo.push(new TranslateAction(elems, e.pageX - beginDragX, e.pageY - beginDragY));
 				actionsToRedo = [];
-				selectedElements = [];
 			}
 		}
 	});
@@ -325,6 +389,11 @@ function paletteInit() {
 		},
 		change: function(color) {
 			wColor = color.toRgbString();
+			selectedElements.forEach(function(item) {
+				console.log(item.attr("stroke"));
+				actionsToUndo.push(new ColorAction(selectedElements, item.attr("stroke"), wColor));
+				item.attr("stroke", wColor);
+			});
 		},
 		palette: [
 			["rgb(0, 0, 0)", "rgb(67, 67, 67)", "rgb(102, 102, 102)",
