@@ -1,14 +1,16 @@
 var svgSnap;
 var wColor = "#000";
+var actionsToUndo = [];
+var actionsToRedo = [];
+var selectedElements = [];
+var dragX = 0
+var dragY = 0;
 
 function reportError() {
 	var errorText = document.createElement("p");
 	errorText.innerHTML = "Toolbar setup error";
 	document.body.appendChild(errorText);
 }
-
-var actionsToUndo = [];
-var actionsToRedo = [];
 
 var PathAction = function(pre, post) {
 	this.pre = pre;
@@ -147,9 +149,10 @@ window.onload = function() {
 		if (paint.checked) { // This is when the user wants to draw
 			isDown = true;
 			isMoved = false;
-			canvasX = e.pageX - svgDiv.offsetLeft;
-			canvasY = e.pageY - svgDiv.offsetTop;
-			pInfo = "M" + canvasX + "," + canvasY;
+			// canvasX = e.pageX - svgDiv.offsetLeft;
+			// canvasY = e.pageY - svgDiv.offsetTop;
+			// pInfo = "M" + canvasX + "," + canvasY;
+			pInfo = "M"+e.layerX+","+e.layerY;
 			path = svgSnap.path(pInfo);
 			path.attr({
 				strokeWidth: document.getElementById("strokeSize").value,
@@ -165,11 +168,22 @@ window.onload = function() {
 	})
 	.mousemove(function(e) {
 		if (paint.checked && isDown) { //When the user wants to draw
-			canvasX = e.pageX - svgDiv.offsetLeft;
-			canvasY = e.pageY - svgDiv.offsetTop;
+			// canvasX = e.pageX - svgDiv.offsetLeft;
+			// canvasY = e.pageY - svgDiv.offsetTop;
 			isMoved = true;
-			pInfo += " L" + canvasX.toString() + " " + canvasY.toString();
+			// pInfo += " L" + canvasX.toString() + " " + canvasY.toString();
+			pInfo += "L"+e.layerX+","+e.layerY;
 			path.attr({d: pInfo});
+		}
+		else if (select.checked && e.buttons==1 && selectedElements.length>0) {
+			selectedElements.forEach(function(elem) {
+				transM = elem.transform().localMatrix;
+				transM.translate(e.layerX - dragX, e.layerY - dragY);
+				elem.transform(transM);
+				elem.bbox.elem.transform(transM);
+			})
+			dragX = e.layerX;
+			dragY = e.layerY;
 		}
 	})
 	.mouseup(function(e) {
@@ -221,20 +235,23 @@ window.onload = function() {
 			})
 			.mousedown(function(evt) {
 				if (select.checked) {
-					this.clickX = evt.layerX;
-					this.clickY = evt.layerY;
-					this.transM = this.transform().localMatrix;
+					selectedElements.push(this);
+					dragX = evt.layerX;
+					dragY = evt.layerY;
+					// this.clickX = evt.layerX;
+					// this.clickY = evt.layerY;
+					// this.transM = this.transform().localMatrix;
 				}
 			})
-			.mousemove(function(evt) {
-				//reimplement this keeping track of clicked/selected elements and moving all of them (would work even for fast movements that "leave" the path)
-				if (select.checked && evt.buttons==1) {
-					console.log("dragging");
-					newM = this.transM.clone().translate(evt.layerX - this.clickX, evt.layerY - this.clickY);
-					this.transform(newM);
-					this.bbox.elem.transform(newM);
-				}
-			})
+			// .mousemove(function(evt) {
+			// 	//reimplement this keeping track of clicked/selected elements and moving all of them (would work even for fast movements that "leave" the path)
+			// 	if (select.checked && evt.buttons==1) {
+			// 		console.log("dragging");
+			// 		newM = this.transM.clone().translate(evt.layerX - this.clickX, evt.layerY - this.clickY);
+			// 		this.transform(newM);
+			// 		this.bbox.elem.transform(newM);
+			// 	}
+			// })
 			.mouseout(function() {
 				this.bbox.hide();
 			});
@@ -244,6 +261,7 @@ window.onload = function() {
 		}
 		else if (select.checked) { // When the user wants to select
 			svg.style.cursor = "pointer";
+			selectedElements.splice(0,selectedElements.length);
 		}
 	});
 
