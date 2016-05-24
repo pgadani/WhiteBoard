@@ -147,13 +147,17 @@ function toolbarSetup() {
 	paint.classList.add("selected");
 	paint.addEventListener("click", function() {
 		pointerType = 0;
-		this.classList.toggle("selected");
-		select.classList.toggle("selected");
+		if (select.classList.contains("selected")) {
+			paint.classList.add("selected");
+			select.classList.remove("selected");
+		}
 	});
 	select.addEventListener("click", function() {
 		pointerType = 1;
-		this.classList.toggle("selected");
-		paint.classList.toggle("selected");
+		if (paint.classList.contains("selected")) {
+			select.classList.add("selected");
+			paint.classList.remove("selected");
+		}
 	})
 }
 
