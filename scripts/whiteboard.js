@@ -24,13 +24,13 @@ PathAction.prototype.undoAction = function() {
 	}
 
 	if (this.post) {
-		this.post.remove();
+		this.post.removeAll();
 	}
 };
 
 PathAction.prototype.redoAction = function() {
 	if (this.prev) {
-		this.prev.remove();
+		this.prev.removeAll();
 	}
 
 	if (this.post) {
@@ -321,6 +321,11 @@ window.onload = function() {
 				this.bbox.elem.transform(transM);
 				this.bbox.recirc.transform(transM);
 			}
+			path.removeAll = function() {
+				this.remove();
+				this.bbox.elem.remove();
+				this.bbox.recirc.remove();
+			}
 			path
 			.mouseover(function() {
 				if (pointerType==1) {
@@ -353,9 +358,11 @@ window.onload = function() {
 		}
 		else if (pointerType==1) { // When the user wants to select
 			svg.style.cursor = "pointer";
-			if (selectedElements.length>0) {
+			var changeX = e.pageX - beginDragX;
+			var changeY = e.pageY - beginDragY;
+			if (selectedElements.length>0 && (changeX!=0 || changeY!=0)) {
 				elems = selectedElements;
-				actionsToUndo.push(new TranslateAction(elems, e.pageX - beginDragX, e.pageY - beginDragY));
+				actionsToUndo.push(new TranslateAction(elems, changeX, changeY));
 				actionsToRedo = [];
 			}
 		}
