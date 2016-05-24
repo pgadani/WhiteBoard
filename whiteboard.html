@@ -12,15 +12,17 @@
 </head>
 <body>
 	<div id="toolbar">
+		<form class="action-type">
+	        <input checked="checked" id="paint" type="radio" name="action-type" value="paint" />
+	        <label class="fa fa-paint-brush fa-2x" aria-hidden="true" for="paint"></label>
+	        <input id="select" type="radio" name="action-type" value="select" />
+	        <label class="fa fa-hand-spock-o fa-2x" aria-hidden="true" for="select"></label>
+	    </form>
 		<input type="text" id="color">
 		<input type="range" id="strokeSize">
 		<input type="text" id="strokeSizeVal">
-		<form class="action-type">
-			<input checked="checked" id="paint" type="radio" name="action-type" value="paint" />
-			<label class="fa fa-paint-brush fa-2x" aria-hidden="true" for="paint"></label>
-			<input id="select" type="radio" name="action-type" value="select" />
-			<label class="fa fa-hand-spock-o fa-2x" aria-hidden="true" for="select"></label>
-		</form>
+		<input type="image" src="images/undo.jpg" id="undo">
+	    <input type="image" src="images/redo.jpg" id="redo">
 	</div>
 	<div id="board-container">
 		<svg id="board"></svg>
