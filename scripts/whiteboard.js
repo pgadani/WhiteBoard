@@ -209,6 +209,14 @@ window.onload = function() {
 				width += 2*offset;
 				height += 2*offset;
 			}
+			var c1 = svgSnap.circle(x, y, 2);
+			var c2 = svgSnap.circle(x+width/2, y, 2);
+			var c3 = svgSnap.circle(x+width, y, 2);
+			var c4 = svgSnap.circle(x+width, y+height/2, 2);
+			var c5 = svgSnap.circle(x+width, y+height, 2);
+			var c6 = svgSnap.circle(x+width/2, y+height, 2);
+			var c7 = svgSnap.circle(x, y+height, 2);
+			var c8 = svgSnap.circle(x, y+height/2, 2);
 			path.bbox = {
 				elem: svgSnap
 					.rect(x,y,width, height)
@@ -218,13 +226,22 @@ window.onload = function() {
 						stroke: "gray"
 					})
 					.remove(), //forming the path for the bounding box
+				// recirc: svgSnap.g()
+				// 	.add(c1, c2, c3, c4, c5, c6, c7, c8);
+				// 	.attr({
+				// 		fill: "gray"
+				// 		stroke: "none"
+				// 	})
+				// 	.remove()
 				show: function() {
 					if (this.elem.parent() === null) {
 						this.elem.appendTo(svgSnap);
+						this.recirc.appendTo(svgSnap);
 					}
 				},
 				hide: function() {
 					this.elem.remove();
+					this.recirc.remove();
 				}
 			};
 			path
