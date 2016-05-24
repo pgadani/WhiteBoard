@@ -69,9 +69,7 @@ TranslateAction.prototype.redoAction = function() {
 // for color changes
 var ColorAction = function(elems, prev, post) {
 	this.elems = elems;
-	console.log(prev);
 	this.prev = prev;
-	console.log(this.prev);
 	this.post = post;
 }
 
@@ -384,7 +382,6 @@ function paletteInit() {
 		change: function(color) {
 			wColor = color.toRgbString();
 			selectedElements.forEach(function(item) {
-				console.log(item.attr("stroke"));
 				actionsToUndo.push(new ColorAction(selectedElements, item.attr("stroke"), wColor));
 				item.attr("stroke", wColor);
 			});
