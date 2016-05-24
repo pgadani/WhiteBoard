@@ -1,8 +1,68 @@
-//thanks to http://codepen.io/mikethedj4/pen/cnCAL
-
+var svgSnap;
 var wColor = "#000";
 
+function reportError() {
+	var errorText = document.createElement("p");
+	errorText.innerHTML = "Toolbar setup error";
+	document.body.appendChild(errorText);
+}
+
+var actionsToUndo = [];
+var actionsToRedo = [];
+
+var PathAction = function(pre, post) {
+	this.pre = pre;
+	this.post = post;
+};
+
+PathAction.prototype.undoAction = function() {
+	if (this.pre) {
+		svgSnap.append(this.pre);
+	}
+
+	if (this.post) {
+		this.post.remove();
+	}
+};
+
+PathAction.prototype.redoAction = function() {
+	if (this.pre) {
+		this.pre.remove();
+	}
+
+	if (this.post) {
+		svgSnap.append(this.post);
+	}
+};
+
+function actionButtonSetup() {
+	var undoButton = document.getElementById("undo");
+	var redoButton = document.getElementById("redo");
+	if (!undoButton || !redoButton) {
+		reportError();
+		return;
+	}
+
+	undoButton.addEventListener('click', function() {
+		if (actionsToUndo.length > 0) {
+			var currAction = actionsToUndo.pop();
+			currAction.undoAction();
+			actionsToRedo.push(currAction);
+		}
+	});
+
+	redoButton.addEventListener('click', function() {
+		if (actionsToRedo.length > 0) {
+			var currAction = actionsToRedo.pop();
+			currAction.redoAction();
+			actionsToUndo.push(currAction);
+		}
+	});
+}
+
 window.onload = function() {
+	// set up undo and redo
+	actionButtonSetup();
 
 	//disabling dragging since firefox has glitches with dragging svg elements
 	document.body.ondragstart = function() {
@@ -16,9 +76,7 @@ window.onload = function() {
 	var thickness = document.getElementById("strokeSize");
 	var thicknessVal = document.getElementById("strokeSizeVal");
 	if (!color || !thickness || !thicknessVal) {
-		var errorText = document.createElement("p");
-		errorText.innerHTML = "Toolbar setup error";
-		document.body.appendChild(errorText);
+		reportError();
 		return;
 	}
 
@@ -54,9 +112,7 @@ window.onload = function() {
 
 	if (!toolBar || !svgDiv || !svg || !paint || !select) {
 		// error handling
-		var errorText = document.createElement("p");
-		errorText.innerHTML = "Setup error.";
-		document.body.appendChild(errorText);
+		reportError();
 		return;
 	}
 
@@ -69,7 +125,7 @@ window.onload = function() {
 	svg.style.width = width.toString() + "px";
 	svg.style.height = (window.innerHeight - toolHeight - 10).toString() + "px";
 
-	var svgSnap = Snap("#board");
+	svgSnap = Snap("#board");
 
 	// Change Cursors for different Action Types
 	paint.addEventListener("click", function c() {
@@ -173,6 +229,9 @@ window.onload = function() {
 			.mouseout(function() {
 				this.bbox.hide();
 			});
+
+			actionsToUndo.push(new PathAction(null, path));
+			actionsToRedo = [];
 		}
 		else if (select.checked) { // When the user wants to select
 			svg.style.cursor = "pointer";
