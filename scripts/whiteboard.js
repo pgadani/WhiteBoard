@@ -79,17 +79,20 @@ TranslateAction.prototype.redoAction = function() {
 }
 
 // for color changes
-var ColorAction = function(elems, prev, post) {
+var ColorAction = function(elems) {
 	this.elems = elems;
-	this.prev = prev;
-	this.post = post;
 }
 
 ColorAction.prototype.undoAction = function() {
 	prev = this.prev;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
-			elem.attr("stroke", prev);
+			if (elem[0].type == "path") {
+				elem[0].attr("stroke", elem[1]); 
+			}
+			else if (elem[0].type == "circle") {
+				elem[0].attr("fill", elem[1]); 
+			}
 		});
 	}
 }
@@ -98,7 +101,12 @@ ColorAction.prototype.redoAction = function() {
 	post = this.post;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
-			elem.attr("stroke", post);
+			if (elem[0].type == "path") {
+				elem[0].attr("stroke", elem[2]); 
+			}
+			else if (elem[0].type == "circle") {
+				elem[0].attr("fill", elem[2]); 
+			}
 		});
 	}
 }
@@ -144,6 +152,7 @@ function toolbarSetup() {
 	undoButton.addEventListener("click", function() {
 		if (actionsToUndo.length > 0) {
 			var currAction = actionsToUndo.pop();
+			console.log(currAction);
 			currAction.undoAction();
 			actionsToRedo.push(currAction);
 		}
@@ -424,10 +433,21 @@ function paletteInit() {
 		},
 		change: function(color) {
 			wColor = color.toRgbString();
+			multiInfo = []
 			selectedElements.forEach(function(item) {
-				actionsToUndo.push(new ColorAction(selectedElements, item.attr("stroke"), wColor));
-				item.attr("stroke", wColor);
+				if (item.type == "path") { 
+					info = [item, item.attr("stroke"), wColor];
+					item.attr("stroke", wColor); 
+				}
+				else if (item.type == "circle") { 
+					info = [item, item.attr("fill"), wColor];
+					item.attr("fill", wColor); 
+				}
+				multiInfo.push(info);
 			});
+			if (selectedElements.length > 0) {
+				actionsToUndo.push(new ColorAction(multiInfo));
+			} 
 		},
 		palette: [
 			["rgb(0, 0, 0)", "rgb(67, 67, 67)", "rgb(102, 102, 102)",
