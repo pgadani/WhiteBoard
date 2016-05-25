@@ -26,25 +26,30 @@ PathAction.prototype.undoAction = function() {
 	}
 
 	if (this.post) {
-		this.post.removeAll();
+		this.post.forEach(function(item) {
+			item.data("bbox").hide();
+			item.remove();
+		})
 	}
 };
 
 PathAction.prototype.redoAction = function() {
 	if (this.prev) {
 		this.prev.forEach(function(item) {
-			item.removeAll();
+			item.data("bbox").hide();
+			item.remove();
 		})
 	}
 
 	if (this.post) {
-		svgSnap.append(this.post);
+		this.post.forEach(function(item) {
+			svgSnap.append(item);
+		})
 	}
 };
 
-//takes the transformation strings
 var TranslateAction = function(elems, changeX, changeY) {
-	this.elems = elems; //eventually to be an array of elements
+	this.elems = elems;
 	this.changeX = changeX;
 	this.changeY = changeY;
 }
@@ -56,8 +61,9 @@ TranslateAction.prototype.undoAction = function() {
 		this.elems.forEach(function(elem) {
 			transM = elem.transform().localMatrix;
 			transM.translate(-changeX, -changeY);
-			elem.transformAll(transM);
-		})
+			elem.data("bbox").transformAll(transM);
+			elem.transform(transM);
+		});
 	}
 }
 
@@ -66,8 +72,9 @@ TranslateAction.prototype.redoAction = function() {
 		this.elems.forEach(function(elem) {
 			transM = elem.transform().localMatrix;
 			transM.translate(this.changeX, this.changeY);
-			elem.transformAll(transM);
-		})
+			elem.data("bbox").transformAll(transM);
+			elem.transform(transM);
+		});
 	}
 }
 
@@ -83,7 +90,7 @@ ColorAction.prototype.undoAction = function() {
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
 			elem.attr("stroke", prev);
-		})
+		});
 	}
 }
 
@@ -92,15 +99,22 @@ ColorAction.prototype.redoAction = function() {
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
 			elem.attr("stroke", post);
-		})
+		});
 	}
 }
 
 function toolbarSetup() {
-	var color = document.getElementById("color");
-	var thickness = document.getElementById("strokeSize");
-	var thicknessVal = document.getElementById("strokeSizeVal");
-	if (!color || !thickness || !thicknessVal) {
+	var color = document.getElementById("color"),
+		thickness = document.getElementById("strokeSize"),
+		thicknessVal = document.getElementById("strokeSizeVal"),
+		undoButton = document.getElementById("undo"),
+		redoButton = document.getElementById("redo"),
+		paint = document.getElementById("paint"),
+		select = document.getElementById("select"),
+		remove = document.getElementById("remove"),
+		svg = document.getElementById("board");
+
+	if (!color || !thickness || !thicknessVal || !undoButton || !redoButton || !paint || !select || !remove) {
 		reportError();
 		return;
 	}
@@ -126,15 +140,7 @@ function toolbarSetup() {
 			thickness.value = num;
 		}
 	});
-	var undoButton = document.getElementById("undo");
-	var redoButton = document.getElementById("redo");
-	var paint = document.getElementById("paint");
-	var select = document.getElementById("select");
-	var remove = document.getElementById("remove");
-	if (!undoButton || !redoButton || !paint || !select || !remove) {
-		reportError();
-		return;
-	}
+
 	undoButton.addEventListener("click", function() {
 		if (actionsToUndo.length > 0) {
 			var currAction = actionsToUndo.pop();
@@ -149,9 +155,11 @@ function toolbarSetup() {
 			actionsToUndo.push(currAction);
 		}
 	});
+
 	paint.classList.add("selected");
 	paint.addEventListener("click", function() {
 		pointerType = 0;
+		svg.style.cursor = "crosshair";
 		if (select.classList.contains("selected")) {
 			paint.classList.add("selected");
 			select.classList.remove("selected");
@@ -159,15 +167,18 @@ function toolbarSetup() {
 	});
 	select.addEventListener("click", function() {
 		pointerType = 1;
+		svg.style.cursor = "pointer";
 		if (paint.classList.contains("selected")) {
 			select.classList.add("selected");
 			paint.classList.remove("selected");
 		}
-	})
+	});
+
 	remove.addEventListener("click", function() {
 		actionsToUndo.push(new PathAction(selectedElements, null));
 		selectedElements.forEach(function(item) {
-			item.removeAll();
+			item.data("bbox").hide();
+			item.remove();
 		});
 	});
 }
@@ -184,9 +195,9 @@ window.onload = function() {
 	};
 
 	// Get DOM elements and null check
-	var toolBar = document.getElementById("toolbar");
-	var svgDiv = document.getElementById("board-container");
-	var svg = document.getElementById("board");
+	var toolBar = document.getElementById("toolbar"),
+		svgDiv = document.getElementById("board-container"),
+		svg = document.getElementById("board");
 
 	if (!toolBar || !svgDiv || !svg || !paint || !select) {
 		// error handling
@@ -205,33 +216,16 @@ window.onload = function() {
 
 	svgSnap = Snap("#board");
 
-	// Change Cursors for different Action Types
-	paint.addEventListener("click", function c() {
-		svg.style.cursor = "crosshair";
-	});
-	select.addEventListener("click", function c() {
-		svg.style.cursor = "pointer";
-	});
-
 	// Mouse Event Handlers
-	var isDown = false;
-	var isMoved = false;
-	var canvasX, canvasY;
-	var path;
-	var pInfo;
-	var pathClicked = false;
+	var isDown = false,
+		isMoved = false,
+		canvasX, canvasY,
+		path, pInfo;
 
 	svgSnap
 	.mousedown(function(e) {
-		if (!pathClicked) {
-			selectedElements.forEach(function(item) {
-				item.bbox.hide();
-			});
-			selectedElements = [];
-		}
-		pathClicked = false;
+		isDown = true;
 		if (pointerType==0) { // This is when the user wants to draw
-			isDown = true;
 			isMoved = false;
 			canvasX = e.pageX - svgDiv.offsetLeft;
 			canvasY = e.pageY - svgDiv.offsetTop;
@@ -247,25 +241,60 @@ window.onload = function() {
 		}
 		else if (pointerType==1) { // When the user wants to select
 			svg.style.cursor = "move";
+			//out of sheer curiosity
+			elem = Snap.getElementByPoint(e.pageX, e.pageY);
+			if (elem.type=="path" || elem.type=="circle") {
+				if (e.ctrlKey) {
+					if (selectedElements.indexOf(elem)>=0) {
+						elem.data("bbox").hide();
+						selectedElements.splice(selectedElements.indexOf(elem),1);
+					}
+					else {
+						selectedElements.push(elem);
+					}
+				}
+				else if (selectedElements.indexOf(elem)===-1){
+					selectedElements.forEach(function(item) {
+						item.data("bbox").hide();
+					});
+					selectedElements = [];
+					selectedElements.push(elem);
+				}
+				dragX = e.pageX;
+				dragY = e.pageY;
+				beginDragX = e.pageX;
+				beginDragY = e.pageY;
+			}
+			else {
+				selectedElements.forEach(function(item) {
+					item.data("bbox").hide();
+				});
+				selectedElements = [];
+			}
 		}
 	})
 	.mousemove(function(e) {
-		if (pointerType==0 && isDown) { //When the user wants to draw
-			canvasX = e.pageX - svgDiv.offsetLeft;
-			canvasY = e.pageY - svgDiv.offsetTop;
-			isMoved = true;
-			pInfo += "L"+canvasX+","+canvasY;
-			path.attr({d: pInfo});
-		}
-		else if (pointerType==1 && e.buttons==1 && selectedElements.length>0) {
-			selectedElements.forEach(function(elem) {
-				transM = elem.transform().localMatrix;
-				transM.translate(e.pageX - dragX, e.pageY - dragY);
-				elem.transformAll(transM);
-			})
-			dragX = e.pageX;
-			dragY = e.pageY;
-			//we can use pageX and pageY here without worrying about the offset since we only need differences in values
+		if (isDown) {
+			if (pointerType==0) { //When the user wants to draw
+				canvasX = e.pageX - svgDiv.offsetLeft;
+				canvasY = e.pageY - svgDiv.offsetTop;
+				isMoved = true;
+				pInfo += "L"+canvasX+","+canvasY;
+				path.attr({d: pInfo});
+			}
+			else if (pointerType==1 && selectedElements.length>0) {
+				x = e.pageX;
+				y = e.pageY;
+				selectedElements.forEach(function(elem) {
+					transM = elem.transform().localMatrix;
+					transM.translate(e.pageX - dragX, e.pageY - dragY);
+					elem.data("bbox").transformAll(transM);
+					elem.transform(transM);
+				})
+				dragX = e.pageX;
+				dragY = e.pageY;
+				//we can use pageX and pageY here without worrying about the offset since we only need differences in values
+			}
 		}
 	})
 	.mouseup(function(e) {
@@ -301,7 +330,7 @@ window.onload = function() {
 			var c8 = svgSnap.circle(x, y+height/2, 2);
 			var c9 = svgSnap.circle(x+width/2, y-20, 2);
 			var l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
-			path.bbox = {
+			bbox = {
 				elem: svgSnap
 					.rect(x,y,width, height)
 					.attr({
@@ -327,52 +356,38 @@ window.onload = function() {
 				hide: function() {
 					this.elem.remove();
 					this.recirc.remove();
+				},
+				transformAll: function(transM) {
+					this.elem.transform(transM);
+					this.recirc.transform(transM);
 				}
 			}
-			path.transformAll = function(transM) {
-				this.transform(transM);
-				this.bbox.elem.transform(transM);
-				this.bbox.recirc.transform(transM);
-			}
-			path.removeAll = function() {
-				this.remove();
-				this.bbox.elem.remove();
-				this.bbox.recirc.remove();
-			}
+			path.data("bbox", bbox);
 			path
 			.mouseover(function() {
 				if (pointerType==1) {
-					this.bbox.show();
-				}
-			})
-			.mousedown(function(evt) {
-				pathClicked = true;
-				if (pointerType==1) {
-					selectedElements.forEach(function(item) {
-						item.bbox.hide();
-					});
-					selectedElements = [];
-					selectedElements.push(this);
-					this.bbox.show();
-					dragX = evt.pageX;
-					dragY = evt.pageY;
-					beginDragX = evt.pageX;
-					beginDragY = evt.pageY;
+					this.data("bbox").show();
 				}
 			})
 			.mouseout(function() {
-				if (!selectedElements.includes(this)) {
-					this.bbox.hide();
+				if (selectedElements.indexOf(this)===-1) {
+					this.data("bbox").hide();
 				}
 			});
-
-			actionsToUndo.push(new PathAction(null, path));
+			actionsToUndo.push(new PathAction(null, [path]));
 			actionsToRedo = [];
 		}
 		else if (pointerType==1) { // When the user wants to select
 			svg.style.cursor = "pointer";
-			var changeX = e.pageX - beginDragX;
-			var changeY = e.pageY - beginDragY;
+			var changeX, changeY;
+			if (e.type=="touchend") {
+				changeX = e.changedTouches[0].pageX - beginDragX;
+				changeY = e.changedTouches[0].pageY - beginDragY;
+			}
+			else {
+				changeX = e.pageX - beginDragX;
+				changeY = e.pageY - beginDragY;
+			}
 			if (selectedElements.length>0 && (changeX!=0 || changeY!=0)) {
 				elems = selectedElements;
 				actionsToUndo.push(new TranslateAction(elems, changeX, changeY));
