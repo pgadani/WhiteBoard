@@ -22,14 +22,14 @@ PathAction.prototype.undoAction = function() {
 	if (this.prev) {
 		this.prev.forEach(function(item) {
 			svgSnap.append(item);
-		})
+		});
 	}
 
 	if (this.post) {
 		this.post.forEach(function(item) {
 			item.data("bbox").hide();
 			item.remove();
-		})
+		});
 	}
 };
 
@@ -38,13 +38,13 @@ PathAction.prototype.redoAction = function() {
 		this.prev.forEach(function(item) {
 			item.data("bbox").hide();
 			item.remove();
-		})
+		});
 	}
 
 	if (this.post) {
 		this.post.forEach(function(item) {
 			svgSnap.append(item);
-		})
+		});
 	}
 };
 
@@ -52,39 +52,39 @@ var TranslateAction = function(elems, changeX, changeY) {
 	this.elems = elems;
 	this.changeX = changeX;
 	this.changeY = changeY;
-}
+};
 
 TranslateAction.prototype.undoAction = function() {
-	changeX = this.changeX;
-	changeY = this.changeY;
+	var changeX = this.changeX;
+	var changeY = this.changeY;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
-			transM = elem.transform().localMatrix;
+			var transM = elem.transform().localMatrix;
 			transM.translate(-changeX, -changeY);
 			elem.data("bbox").transformAll(transM);
 			elem.transform(transM);
 		});
 	}
-}
+};
 
 TranslateAction.prototype.redoAction = function() {
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
-			transM = elem.transform().localMatrix;
+			var transM = elem.transform().localMatrix;
 			transM.translate(this.changeX, this.changeY);
 			elem.data("bbox").transformAll(transM);
 			elem.transform(transM);
 		});
 	}
-}
+};
 
 // for color changes
 var ColorAction = function(elems) {
 	this.elems = elems;
-}
+};
 
 ColorAction.prototype.undoAction = function() {
-	prev = this.prev;
+	var prev = this.prev;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
 			if (elem[0].type == "path") {
@@ -95,10 +95,10 @@ ColorAction.prototype.undoAction = function() {
 			}
 		});
 	}
-}
+};
 
 ColorAction.prototype.redoAction = function() {
-	post = this.post;
+	var post = this.post;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
 			if (elem[0].type == "path") {
@@ -109,7 +109,7 @@ ColorAction.prototype.redoAction = function() {
 			}
 		});
 	}
-}
+};
 
 function toolbarSetup() {
 	var color = document.getElementById("color"),
@@ -234,7 +234,7 @@ window.onload = function() {
 	svgSnap
 	.mousedown(function(e) {
 		isDown = true;
-		if (pointerType==0) { // This is when the user wants to draw
+		if (pointerType===0) { // This is when the user wants to draw
 			isMoved = false;
 			canvasX = e.pageX - svgDiv.offsetLeft;
 			canvasY = e.pageY - svgDiv.offsetTop;
@@ -251,7 +251,7 @@ window.onload = function() {
 		else if (pointerType==1) { // When the user wants to select
 			svg.style.cursor = "move";
 			//out of sheer curiosity
-			elem = Snap.getElementByPoint(e.pageX, e.pageY);
+			var elem = Snap.getElementByPoint(e.pageX, e.pageY);
 			if (elem.type=="path" || elem.type=="circle") {
 				if (e.ctrlKey) {
 					if (selectedElements.indexOf(elem)>=0) {
@@ -284,7 +284,7 @@ window.onload = function() {
 	})
 	.mousemove(function(e) {
 		if (isDown) {
-			if (pointerType==0) { //When the user wants to draw
+			if (pointerType===0) { //When the user wants to draw
 				canvasX = e.pageX - svgDiv.offsetLeft;
 				canvasY = e.pageY - svgDiv.offsetTop;
 				isMoved = true;
@@ -292,14 +292,14 @@ window.onload = function() {
 				path.attr({d: pInfo});
 			}
 			else if (pointerType==1 && selectedElements.length>0) {
-				x = e.pageX;
-				y = e.pageY;
+				var x = e.pageX;
+				var y = e.pageY;
 				selectedElements.forEach(function(elem) {
-					transM = elem.transform().localMatrix;
+					var transM = elem.transform().localMatrix;
 					transM.translate(e.pageX - dragX, e.pageY - dragY);
 					elem.data("bbox").transformAll(transM);
 					elem.transform(transM);
-				})
+				});
 				dragX = e.pageX;
 				dragY = e.pageY;
 				//we can use pageX and pageY here without worrying about the offset since we only need differences in values
@@ -308,7 +308,7 @@ window.onload = function() {
 	})
 	.mouseup(function(e) {
 		isDown = false;
-		if (pointerType==0) { // When the user wants to draw
+		if (pointerType===0) { // When the user wants to draw
 			if (e.type != "touchend" && !isMoved) {
 				path.remove();
 				canvasX = e.pageX - svgDiv.offsetLeft;
@@ -370,7 +370,7 @@ window.onload = function() {
 					this.elem.transform(transM);
 					this.recirc.transform(transM);
 				}
-			}
+			};
 			path.data("bbox", bbox);
 			path
 			.mouseover(function() {
@@ -397,9 +397,8 @@ window.onload = function() {
 				changeX = e.pageX - beginDragX;
 				changeY = e.pageY - beginDragY;
 			}
-			if (selectedElements.length>0 && (changeX!=0 || changeY!=0)) {
-				elems = selectedElements;
-				actionsToUndo.push(new TranslateAction(elems, changeX, changeY));
+			if (selectedElements.length>0 && (changeX!==0 || changeY!==0)) {
+				actionsToUndo.push(new TranslateAction(selectedElements, changeX, changeY));
 				actionsToRedo = [];
 			}
 		}
@@ -410,6 +409,26 @@ window.onload = function() {
 		evt.preventDefault();
 	},false);
 };
+
+function setPenColor(color) {
+	wColor = color.toRgbString();
+	var multiInfo = [];
+	selectedElements.forEach(function(item) {
+		var info;
+		if (item.type == "path") { 
+			info = [item, item.attr("stroke"), wColor];
+			item.attr("stroke", wColor); 
+		}
+		else if (item.type == "circle") { 
+			info = [item, item.attr("fill"), wColor];
+			item.attr("fill", wColor); 
+		}
+		multiInfo.push(info);
+	});
+	if (selectedElements.length > 0) {
+		actionsToUndo.push(new ColorAction(multiInfo));
+	}
+}
 
 function paletteInit() {
 	$("#color").spectrum({
@@ -424,6 +443,7 @@ function paletteInit() {
 		preferredFormat: "hex",
 		localStorageKey: "color_selector",
 		move: function (color) {
+			setPenColor(color);
 		},
 		show: function () {
 		},
@@ -432,22 +452,7 @@ function paletteInit() {
 		hide: function () {
 		},
 		change: function(color) {
-			wColor = color.toRgbString();
-			multiInfo = []
-			selectedElements.forEach(function(item) {
-				if (item.type == "path") { 
-					info = [item, item.attr("stroke"), wColor];
-					item.attr("stroke", wColor); 
-				}
-				else if (item.type == "circle") { 
-					info = [item, item.attr("fill"), wColor];
-					item.attr("fill", wColor); 
-				}
-				multiInfo.push(info);
-			});
-			if (selectedElements.length > 0) {
-				actionsToUndo.push(new ColorAction(multiInfo));
-			} 
+			setPenColor(color); 
 		},
 		palette: [
 			["rgb(0, 0, 0)", "rgb(67, 67, 67)", "rgb(102, 102, 102)",

@@ -870,6 +870,8 @@
                 boundElement.val(displayColor);
             }
 
+            console.log(fireCallback)
+            console.log(hasChanged)
             if (fireCallback && hasChanged) {
                 callbacks.change(color);
                 boundElement.trigger('change', [ color ]);
