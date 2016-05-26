@@ -17,14 +17,14 @@ PathAction.prototype.undoAction = function() {
 	if (this.prev) {
 		this.prev.forEach(function(item) {
 			svgSnap.append(item);
-		})
+		});
 	}
 
 	if (this.post) {
 		this.post.forEach(function(item) {
 			item.data("bbox").hide();
 			item.remove();
-		})
+		});
 	}
 };
 
@@ -33,13 +33,13 @@ PathAction.prototype.redoAction = function() {
 		this.prev.forEach(function(item) {
 			item.data("bbox").hide();
 			item.remove();
-		})
+		});
 	}
 
 	if (this.post) {
 		this.post.forEach(function(item) {
 			svgSnap.append(item);
-		})
+		});
 	}
 };
 
@@ -47,41 +47,41 @@ var TranslateAction = function(elems, changeX, changeY) {
 	this.elems = elems;
 	this.changeX = changeX;
 	this.changeY = changeY;
-}
+};
 
 TranslateAction.prototype.undoAction = function() {
-	changeX = this.changeX;
-	changeY = this.changeY;
+	var changeX = this.changeX;
+	var changeY = this.changeY;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
-			transM = elem.transform().localMatrix;
+			var transM = elem.transform().localMatrix;
 			transM.translate(-changeX, -changeY);
 			elem.data("bbox").transformAll(transM);
 			elem.transform(transM);
 		});
 	}
-}
+};
 
 TranslateAction.prototype.redoAction = function() {
-	changeX = this.changeX;
-	changeY = this.changeY;
+	var changeX = this.changeX;
+	var changeY = this.changeY;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
-			transM = elem.transform().localMatrix;
+			var transM = elem.transform().localMatrix;
 			transM.translate(changeX, changeY);
 			elem.data("bbox").transformAll(transM);
 			elem.transform(transM);
 		});
 	}
-}
+};
 
 // for color changes
 var ColorAction = function(elems) {
 	this.elems = elems;
-}
+};
 
 ColorAction.prototype.undoAction = function() {
-	prev = this.prev;
+	var prev = this.prev;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
 			if (elem[0].type == "path") {
@@ -92,10 +92,10 @@ ColorAction.prototype.undoAction = function() {
 			}
 		});
 	}
-}
+};
 
 ColorAction.prototype.redoAction = function() {
-	post = this.post;
+	var post = this.post;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
 			if (elem[0].type == "path") {
@@ -106,7 +106,7 @@ ColorAction.prototype.redoAction = function() {
 			}
 		});
 	}
-}
+};
 
 function clearSelectedElements() {
 	selectedElements.forEach(function(item) {
@@ -248,7 +248,7 @@ window.onload = function() {
 	.mousedown(function(e) {
 		if (!boardActive) return;
 		isDown = true;
-		if (pointerType==0) { // This is when the user wants to draw
+		if (pointerType===0) { // This is when the user wants to draw
 			isMoved = false;
 			canvasX = e.pageX - svgDiv.offsetLeft;
 			canvasY = e.pageY - svgDiv.offsetTop;
@@ -264,7 +264,7 @@ window.onload = function() {
 		}
 		else if (pointerType==1) { // When the user wants to select
 			svg.style.cursor = "move";
-			elem = Snap.getElementByPoint(e.pageX, e.pageY);
+			var elem = Snap.getElementByPoint(e.pageX, e.pageY);
 			if ((elem.type=="path" || elem.type=="circle") && elem.data("bbox")) { //bbox so users can't select the bounding box circles
 				if (e.ctrlKey) {
 					if (selectedElements.indexOf(elem)>=0) {
@@ -291,22 +291,20 @@ window.onload = function() {
 	})
 	.mousemove(function(e) {
 		if (isDown) {
-			if (pointerType==0) { //When the user wants to draw
+			if (pointerType===0) { //When the user wants to draw
 				canvasX = e.pageX - svgDiv.offsetLeft;
 				canvasY = e.pageY - svgDiv.offsetTop;
 				isMoved = true;
 				pInfo += "L"+canvasX+","+canvasY;
 				path.attr({d: pInfo});
 			}
-			else if (pointerType==1 && selectedElements.length>0) {
-				x = e.pageX;
-				y = e.pageY;
+			else if (pointerType===1 && selectedElements.length>0) {
 				selectedElements.forEach(function(elem) {
-					transM = elem.transform().localMatrix;
+					var transM = elem.transform().localMatrix;
 					transM.translate(e.pageX - dragX, e.pageY - dragY);
 					elem.data("bbox").transformAll(transM);
 					elem.transform(transM);
-				})
+				});
 				dragX = e.pageX;
 				dragY = e.pageY;
 				//we can use pageX and pageY here without worrying about the offset since we only need differences in values
@@ -315,7 +313,7 @@ window.onload = function() {
 	})
 	.mouseup(function(e) {
 		isDown = false;
-		if (pointerType==0) { // When the user wants to draw
+		if (pointerType===0) { // When the user wants to draw
 			if (e.type != "touchend" && !isMoved) {
 				path.remove();
 				canvasX = e.pageX - svgDiv.offsetLeft;
@@ -323,12 +321,12 @@ window.onload = function() {
 				path = svgSnap.circle(canvasX, canvasY, document.getElementById("strokeSize").value/2);
 				path.attr({fill: wColor});
 			}
-			var bbox = path.getBBox();
-			var x = bbox.x;
-			var y = bbox.y;
-			var width = bbox.width;
-			var height = bbox.height;
-			if (path.type == "path") {
+			var bbox = path.getBBox(),
+				x = bbox.x,
+				y = bbox.y,
+				width = bbox.width,
+				height = bbox.height;
+			if (path.type === "path") {
 				//not a circle, which has the correct bbox for the stroke thickness
 				var offset = document.getElementById("strokeSize").value/2;
 				x -= offset;
@@ -336,18 +334,18 @@ window.onload = function() {
 				width += 2*offset;
 				height += 2*offset;
 			}
-			var c1 = svgSnap.circle(x, y, 2);
-			var c2 = svgSnap.circle(x+width/2, y, 2);
-			var c3 = svgSnap.circle(x+width, y, 2);
-			var c4 = svgSnap.circle(x+width, y+height/2, 2);
-			var c5 = svgSnap.circle(x+width, y+height, 2);
-			var c6 = svgSnap.circle(x+width/2, y+height, 2);
-			var c7 = svgSnap.circle(x, y+height, 2);
-			var c8 = svgSnap.circle(x, y+height/2, 2);
-			var c9 = svgSnap.circle(x+width/2, y-20, 2);
-			var l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
-			bbox = {
-				elem: svgSnap
+			var c1 = svgSnap.circle(x, y, 2),
+				c2 = svgSnap.circle(x+width/2, y, 2),
+				c3 = svgSnap.circle(x+width, y, 2),
+				c4 = svgSnap.circle(x+width, y+height/2, 2),
+				c5 = svgSnap.circle(x+width, y+height, 2),
+				c6 = svgSnap.circle(x+width/2, y+height, 2),
+				c7 = svgSnap.circle(x, y+height, 2),
+				c8 = svgSnap.circle(x, y+height/2, 2),
+				c9 = svgSnap.circle(x+width/2, y-20, 2),
+				l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
+			var boxData = {
+				box: svgSnap
 					.rect(x,y,width, height)
 					.attr({
 						fill: "none",
@@ -364,21 +362,21 @@ window.onload = function() {
 					})
 					.remove(),
 				show: function() {
-					if (this.elem.parent() === null) {
-						this.elem.appendTo(svgSnap);
+					if (this.box.parent() === null) {
+						this.box.appendTo(svgSnap);
 						this.recirc.appendTo(svgSnap);
 					}
 				},
 				hide: function() {
-					this.elem.remove();
+					this.box.remove();
 					this.recirc.remove();
 				},
 				transformAll: function(transM) {
-					this.elem.transform(transM);
+					this.box.transform(transM);
 					this.recirc.transform(transM);
 				}
-			}
-			path.data("bbox", bbox);
+			};
+			path.data("bbox", boxData);
 			path
 			.mouseover(function() {
 				if (pointerType==1) {
@@ -393,10 +391,10 @@ window.onload = function() {
 			actionsToUndo.push(new PathAction(null, [path]));
 			actionsToRedo = [];
 		}
-		else if (pointerType==1) { // When the user wants to select
+		else if (pointerType===1) { // When the user wants to select
 			svg.style.cursor = "pointer";
 			var changeX, changeY;
-			if (e.type=="touchend") {
+			if (e.type==="touchend") {
 				changeX = e.changedTouches[0].pageX - beginDragX;
 				changeY = e.changedTouches[0].pageY - beginDragY;
 			}
@@ -404,9 +402,8 @@ window.onload = function() {
 				changeX = e.pageX - beginDragX;
 				changeY = e.pageY - beginDragY;
 			}
-			if (selectedElements.length>0 && (changeX!=0 || changeY!=0)) {
-				elems = selectedElements;
-				actionsToUndo.push(new TranslateAction(elems, changeX, changeY));
+			if (selectedElements.length>0 && (changeX!==0 || changeY!==0)) {
+				actionsToUndo.push(new TranslateAction(selectedElements, changeX, changeY));
 				actionsToRedo = [];
 			}
 		}
@@ -417,6 +414,26 @@ window.onload = function() {
 		evt.preventDefault();
 	},false);
 };
+
+function setPenColor(color) {
+	wColor = color.toRgbString();
+	var multiInfo = [];
+	selectedElements.forEach(function(item) {
+		var info;
+		if (item.type == "path") {
+			info = [item, item.attr("stroke"), wColor];
+			item.attr("stroke", wColor);
+		}
+		else if (item.type == "circle") {
+			info = [item, item.attr("fill"), wColor];
+			item.attr("fill", wColor);
+		}
+		multiInfo.push(info);
+	});
+	if (selectedElements.length > 0) {
+		actionsToUndo.push(new ColorAction(multiInfo));
+	}
+}
 
 function paletteInit() {
 	$("#color").spectrum({
@@ -442,22 +459,7 @@ function paletteInit() {
 			boardActive = true;
 		},
 		change: function(color) {
-			wColor = color.toRgbString();
-			multiInfo = []
-			selectedElements.forEach(function(item) {
-				if (item.type == "path") {
-					info = [item, item.attr("stroke"), wColor];
-					item.attr("stroke", wColor);
-				}
-				else if (item.type == "circle") {
-					info = [item, item.attr("fill"), wColor];
-					item.attr("fill", wColor);
-				}
-				multiInfo.push(info);
-			});
-			if (selectedElements.length > 0) {
-				actionsToUndo.push(new ColorAction(multiInfo));
-			}
+			setPenColor(color);
 		},
 		palette: [
 			["rgb(0, 0, 0)", "rgb(67, 67, 67)", "rgb(102, 102, 102)",
