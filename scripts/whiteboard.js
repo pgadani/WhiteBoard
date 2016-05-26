@@ -1,17 +1,12 @@
 var svgSnap;
 var wColor = "#000";
 var pointerType = 0; //0 for paint, 1 for select
+var boardActive = true; //false when the spectrum selector is open so users can click out of it
 var actionsToUndo = [];
 var actionsToRedo = [];
 var selectedElements = [];
 var beginDragX, beginDragY;
 var dragX, dragY;
-
-function reportError() {
-	var errorText = document.createElement("p");
-	errorText.innerHTML = "Toolbar setup error";
-	document.body.appendChild(errorText);
-}
 
 var PathAction = function(prev, post) {
 	this.prev = prev;
@@ -68,10 +63,12 @@ TranslateAction.prototype.undoAction = function() {
 }
 
 TranslateAction.prototype.redoAction = function() {
+	changeX = this.changeX;
+	changeY = this.changeY;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
 			transM = elem.transform().localMatrix;
-			transM.translate(this.changeX, this.changeY);
+			transM.translate(changeX, changeY);
 			elem.data("bbox").transformAll(transM);
 			elem.transform(transM);
 		});
@@ -88,10 +85,10 @@ ColorAction.prototype.undoAction = function() {
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
 			if (elem[0].type == "path") {
-				elem[0].attr("stroke", elem[1]); 
+				elem[0].attr("stroke", elem[1]);
 			}
 			else if (elem[0].type == "circle") {
-				elem[0].attr("fill", elem[1]); 
+				elem[0].attr("fill", elem[1]);
 			}
 		});
 	}
@@ -102,13 +99,26 @@ ColorAction.prototype.redoAction = function() {
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
 			if (elem[0].type == "path") {
-				elem[0].attr("stroke", elem[2]); 
+				elem[0].attr("stroke", elem[2]);
 			}
 			else if (elem[0].type == "circle") {
-				elem[0].attr("fill", elem[2]); 
+				elem[0].attr("fill", elem[2]);
 			}
 		});
 	}
+}
+
+function clearSelectedElements() {
+	selectedElements.forEach(function(item) {
+		item.data("bbox").hide();
+	});
+	selectedElements = [];
+}
+
+function reportError() {
+	var errorText = document.createElement("p");
+	errorText.innerHTML = "Toolbar setup error";
+	document.body.appendChild(errorText);
 }
 
 function toolbarSetup() {
@@ -152,10 +162,10 @@ function toolbarSetup() {
 	undoButton.addEventListener("click", function() {
 		if (actionsToUndo.length > 0) {
 			var currAction = actionsToUndo.pop();
-			console.log(currAction);
 			currAction.undoAction();
 			actionsToRedo.push(currAction);
 		}
+		clearSelectedElements();
 	});
 	redoButton.addEventListener("click", function() {
 		if (actionsToRedo.length > 0) {
@@ -163,6 +173,7 @@ function toolbarSetup() {
 			currAction.redoAction();
 			actionsToUndo.push(currAction);
 		}
+		clearSelectedElements();
 	});
 
 	paint.classList.add("selected");
@@ -173,6 +184,7 @@ function toolbarSetup() {
 			paint.classList.add("selected");
 			select.classList.remove("selected");
 		}
+		clearSelectedElements();
 	});
 	select.addEventListener("click", function() {
 		pointerType = 1;
@@ -189,6 +201,7 @@ function toolbarSetup() {
 			item.data("bbox").hide();
 			item.remove();
 		});
+		selectedElements = [];
 	});
 }
 
@@ -233,6 +246,7 @@ window.onload = function() {
 
 	svgSnap
 	.mousedown(function(e) {
+		if (!boardActive) return;
 		isDown = true;
 		if (pointerType==0) { // This is when the user wants to draw
 			isMoved = false;
@@ -250,9 +264,8 @@ window.onload = function() {
 		}
 		else if (pointerType==1) { // When the user wants to select
 			svg.style.cursor = "move";
-			//out of sheer curiosity
 			elem = Snap.getElementByPoint(e.pageX, e.pageY);
-			if (elem.type=="path" || elem.type=="circle") {
+			if ((elem.type=="path" || elem.type=="circle") && elem.data("bbox")) { //bbox so users can't select the bounding box circles
 				if (e.ctrlKey) {
 					if (selectedElements.indexOf(elem)>=0) {
 						elem.data("bbox").hide();
@@ -263,10 +276,7 @@ window.onload = function() {
 					}
 				}
 				else if (selectedElements.indexOf(elem)===-1){
-					selectedElements.forEach(function(item) {
-						item.data("bbox").hide();
-					});
-					selectedElements = [];
+					clearSelectedElements();
 					selectedElements.push(elem);
 				}
 				dragX = e.pageX;
@@ -275,10 +285,7 @@ window.onload = function() {
 				beginDragY = e.pageY;
 			}
 			else {
-				selectedElements.forEach(function(item) {
-					item.data("bbox").hide();
-				});
-				selectedElements = [];
+				clearSelectedElements();
 			}
 		}
 	})
@@ -421,33 +428,36 @@ function paletteInit() {
 		showPalette: true,
 		showSelectionPalette: true,
 		maxSelectionSize: 10,
+		hideAfterPaletteSelect: true,
 		preferredFormat: "hex",
 		localStorageKey: "color_selector",
 		move: function (color) {
 		},
 		show: function () {
+			boardActive = false;
 		},
 		beforeShow: function () {
 		},
 		hide: function () {
+			boardActive = true;
 		},
 		change: function(color) {
 			wColor = color.toRgbString();
 			multiInfo = []
 			selectedElements.forEach(function(item) {
-				if (item.type == "path") { 
+				if (item.type == "path") {
 					info = [item, item.attr("stroke"), wColor];
-					item.attr("stroke", wColor); 
+					item.attr("stroke", wColor);
 				}
-				else if (item.type == "circle") { 
+				else if (item.type == "circle") {
 					info = [item, item.attr("fill"), wColor];
-					item.attr("fill", wColor); 
+					item.attr("fill", wColor);
 				}
 				multiInfo.push(info);
 			});
 			if (selectedElements.length > 0) {
 				actionsToUndo.push(new ColorAction(multiInfo));
-			} 
+			}
 		},
 		palette: [
 			["rgb(0, 0, 0)", "rgb(67, 67, 67)", "rgb(102, 102, 102)",
