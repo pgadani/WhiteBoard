@@ -157,21 +157,49 @@ function toolbarSetup() {
 		}
 	});
 
-	undoButton.addEventListener("click", function() {
+	var undo = function() {
 		if (actionsToUndo.length > 0) {
 			var currAction = actionsToUndo.pop();
 			currAction.undoAction();
 			actionsToRedo.push(currAction);
 		}
 		clearSelectedElements();
-	});
-	redoButton.addEventListener("click", function() {
+	};
+	var redo = function() {
 		if (actionsToRedo.length > 0) {
 			var currAction = actionsToRedo.pop();
 			currAction.redoAction();
 			actionsToUndo.push(currAction);
 		}
 		clearSelectedElements();
+	};
+	var del = function() {
+		actionsToUndo.push(new PathAction(selectedElements, null));
+		selectedElements.forEach(function(item) {
+			item.data("bbox").hide();
+			item.remove();
+		});
+		selectedElements = [];
+	};
+
+	undoButton.addEventListener("click", undo);
+	redoButton.addEventListener("click", redo);
+	remove.addEventListener("click", del);
+
+	document.addEventListener("keyup", function(evt) {
+		switch(evt.key) {
+		case "z":
+			if (evt.ctrlKey) undo();
+			break;
+		case "y":
+			if (evt.ctrlKey) redo();
+			break;
+		case "Del":
+		case "Delete":
+		case "Backspace":
+			del();
+			break;
+		}
 	});
 
 	paint.classList.add("selected");
@@ -191,15 +219,6 @@ function toolbarSetup() {
 			select.classList.add("selected");
 			paint.classList.remove("selected");
 		}
-	});
-
-	remove.addEventListener("click", function() {
-		actionsToUndo.push(new PathAction(selectedElements, null));
-		selectedElements.forEach(function(item) {
-			item.data("bbox").hide();
-			item.remove();
-		});
-		selectedElements = [];
 	});
 }
 
@@ -236,14 +255,13 @@ window.onload = function() {
 
 	svgSnap = Snap("#board");
 
-	// Mouse Event Handlers
 	var isDown = false,
 		isMoved = false,
 		canvasX, canvasY,
 		path, pInfo;
 
-	svgSnap
-	.mousedown(function(e) {
+	// Mouse Event Handlers
+	var beginMovement = function(e) {
 		if (!boardActive) return;
 		isDown = true;
 		if (pointerType===0) { // This is when the user wants to draw
@@ -286,8 +304,8 @@ window.onload = function() {
 				clearSelectedElements();
 			}
 		}
-	})
-	.mousemove(function(e) {
+	};
+	var movement = function(e) {
 		if (isDown) {
 			if (pointerType===0) { //When the user wants to draw
 				canvasX = e.pageX - svgDiv.offsetLeft;
@@ -308,10 +326,10 @@ window.onload = function() {
 				//we can use pageX and pageY here without worrying about the offset since we only need differences in values
 			}
 		}
-	})
-	.mouseup(function(e) {
+	};
+	var endMovement = function(e) {
 		isDown = false;
-		if (pointerType===0) { // When the user wants to draw
+		if (pointerType===0 && path) { // When the user wants to draw
 			if (e.type != "touchend" && !isMoved) {
 				path.remove();
 				canvasX = e.pageX - svgDiv.offsetLeft;
@@ -401,11 +419,22 @@ window.onload = function() {
 				changeY = e.pageY - beginDragY;
 			}
 			if (selectedElements.length>0 && (changeX!==0 || changeY!==0)) {
-				actionsToUndo.push(new TranslateAction(selectedElements, changeX, changeY));
+				actionsToUndo.push(new TranslateAction(selectedElements.slice(), changeX, changeY)); //we might need to copy the array
 				actionsToRedo = [];
 			}
 		}
+	};
+
+	svgSnap
+	.mousedown(beginMovement)
+	.mousemove(movement)
+	.mouseup(endMovement);
+	svg.addEventListener("mouseleave", function(e) {
+		if (isDown) {
+			endMovement(e);
+		}
 	});
+	//so that moving the mouse off the board ends the movement
 
 	// Disable Page Move
 	document.body.addEventListener("touchmove",function(evt){
