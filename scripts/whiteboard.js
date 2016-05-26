@@ -81,7 +81,6 @@ var ColorAction = function(elems) {
 };
 
 ColorAction.prototype.undoAction = function() {
-	var prev = this.prev;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
 			if (elem[0].type == "path") {
@@ -95,7 +94,6 @@ ColorAction.prototype.undoAction = function() {
 };
 
 ColorAction.prototype.redoAction = function() {
-	var post = this.post;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
 			if (elem[0].type == "path") {
@@ -221,7 +219,7 @@ window.onload = function() {
 		svgDiv = document.getElementById("board-container"),
 		svg = document.getElementById("board");
 
-	if (!toolBar || !svgDiv || !svg || !paint || !select) {
+	if (!toolBar || !svgDiv || !svg) {
 		// error handling
 		reportError();
 		return;
@@ -410,7 +408,7 @@ window.onload = function() {
 	});
 
 	// Disable Page Move
-	document.body.addEventListener('touchmove',function(evt){
+	document.body.addEventListener("touchmove",function(evt){
 		evt.preventDefault();
 	},false);
 };
@@ -448,7 +446,7 @@ function paletteInit() {
 		hideAfterPaletteSelect: true,
 		preferredFormat: "hex",
 		localStorageKey: "color_selector",
-		move: function (color) {
+		move: function () {
 		},
 		show: function () {
 			boardActive = false;
