@@ -1,10 +1,6 @@
 // File for undo/redo abstractions
-// Each action is considered a "class" with 
+// Each action is considered a "class" with
 // two required methods: redoAction and undoAction
-
-// Stacks to remember actions for undo/redo
-var actionsToUndo = [];
-var actionsToRedo = [];
 
 var PathAction = function(prev, post) {
 	this.prev = prev;

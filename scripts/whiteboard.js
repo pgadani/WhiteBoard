@@ -1,5 +1,5 @@
 var svgSnap;				// Snap's reference to svg element (basically the canvas)
-var wColor = "#000";		// selected color (why is it wColor again?)
+var selectedColor = "#000";		// selected color (why is it selectedColor again?)
 var boardActive = true; 	// false when the spectrum selector is open so users can click out of it
 var selectedElements = [];
 
@@ -8,11 +8,16 @@ var endDragX, endDragY;
 
 var pointerType = {
 	DRAW: 0,
-	SELECT: 1
+	ERASE: 1,
+	SELECT: 2
 };
 var currPointer = pointerType.DRAW;
 
 var thickness;				// element holding the path width
+
+// Stacks to remember actions for undo/redo
+var actionsToUndo = [];
+var actionsToRedo = [];
 
 function clearSelectedElements() {
 	// remove all selected elements and remove bbox from canvas
@@ -40,19 +45,20 @@ function toolbarSetup() {
 		undoButton = document.getElementById("undo"),
 		redoButton = document.getElementById("redo"),
 		paint = document.getElementById("paint"),
+		erase = document.getElementById("erase"),
 		select = document.getElementById("select"),
 		remove = document.getElementById("remove"),
 		svg = document.getElementById("board");
 
 	// null == FALSE
-	if (!color || !thickness || !thicknessVal || !undoButton || !redoButton || !paint || !select || !remove) {
+	if (!color || !thickness || !thicknessVal || !undoButton || !redoButton || !paint || !erase || !select || !remove) {
 		reportError();
 		return;
 	}
 
 	//toolbar setup, do this first so height calculations work out
 	paletteInit();
-	color.value=wColor;
+	color.value=selectedColor;
 
 	var initThickness = "5";
 	thicknessVal.value = initThickness;
@@ -114,6 +120,16 @@ function toolbarSetup() {
 		case "y":
 			if (evt.ctrlKey) redo();
 			break;
+		case "a":
+			if (evt.ctrlKey) {
+				clearSelectedElements();
+				//selecting all the elements within the svg, can't use * because of description and other children that can't be displayed
+				selectedElements = [].concat(svgSnap.selectAll("path").items, svgSnap.selectAll("circle").items);
+				selectedElements.forEach(function(item) {
+					item.data("bbox").show();
+				});
+			}
+			break;
 		case "Del":
 		case "Delete":
 		case "Backspace":
@@ -127,24 +143,37 @@ function toolbarSetup() {
 	paint.addEventListener("click", function() {
 		currPointer = pointerType.DRAW;
 		svg.style.cursor = "crosshair";
-		if (select.classList.contains("selected")) {
+		if (!paint.classList.contains("selected")) {
 			paint.classList.add("selected");
+			erase.classList.remove("selected");
 			select.classList.remove("selected");
 		}
 		clearSelectedElements();
 	});
 
+	erase.addEventListener("click", function() {
+		currPointer = pointerType.ERASE;
+		svg.style.cursor = "crosshair";
+		if (!erase.classList.contains("selected")) {
+			erase.classList.add("selected");
+			paint.classList.remove("selected");
+			select.classList.remove("selected");
+		}
+	});
+
 	select.addEventListener("click", function() {
 		currPointer = pointerType.SELECT;
 		svg.style.cursor = "pointer";
-		if (paint.classList.contains("selected")) {
+		if (!select.classList.contains("selected")) {
 			select.classList.add("selected");
+			erase.classList.remove("selected");
 			paint.classList.remove("selected");
 		}
 	});
 }
 
 function addSelectionBox(currPath) {
+	var minBBoxSize = 16;
 	var bbox = currPath.getBBox(),
 		x = bbox.x,
 		y = bbox.y,
@@ -160,6 +189,16 @@ function addSelectionBox(currPath) {
 		height += 2*offset;
 	}
 
+	//creating a larger bbox for small elements to make resizing/rotating easier
+	if (width < minBBoxSize) {
+		x-=minBBoxSize/2;
+		width+=minBBoxSize;
+	}
+	if (height < minBBoxSize) {
+		y-=minBBoxSize/2;
+		height+=minBBoxSize;
+	}
+
 	// drag circles in the middle of each side and at each corner
 	var c1 = svgSnap.circle(x, y, 2),
 		c2 = svgSnap.circle(x+width/2, y, 2),
@@ -171,7 +210,7 @@ function addSelectionBox(currPath) {
 		c8 = svgSnap.circle(x, y+height/2, 2),
 		// rotate circle above the top in the middle
 		c9 = svgSnap.circle(x+width/2, y-20, 2),
-		// rotate circle has a line sticking out of top
+		// rotate circle has a line connecting to the box
 		l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
 
 	var boxData = {
@@ -213,8 +252,9 @@ function addSelectionBox(currPath) {
 	// mouse listeners automatically check for correct mouse position
 	// handles the "preview" of a bbox
 	currPath
-	.mouseover(function() {
-		if (currPointer==pointerType.SELECT) {
+	.mouseover(function(e) {
+		//so that the hovering box is not shown when dragging other elements
+		if (currPointer===pointerType.SELECT && e.buttons===0) {
 			this.data("bbox").show();
 		}
 	})
@@ -281,13 +321,29 @@ window.onload = function() {
 			path = svgSnap.path(pInfo);
 			path.attr({
 				strokeWidth: thickness.value,
-				stroke: wColor,
+				stroke: selectedColor,
 				fill: "none",
 				strokeLinecap: "round",	// shape at ends of paths (for smoothing)
 				strokeLinejoin: "round"	// shape at corner of paths (for smoothing)
 			});
 		}
-		else if (currPointer==pointerType.SELECT) {
+		else if (currPointer===pointerType.ERASE) {
+			isMoved = false;
+			// e is global coordinates, svgDiv is the canvas top left corner
+			canvasX = e.pageX - svgDiv.offsetLeft;
+			canvasY = e.pageY - svgDiv.offsetTop;
+			// M starts a path
+			pInfo = "M"+canvasX+","+canvasY;
+			path = svgSnap.path(pInfo);
+			path.attr({
+				strokeWidth: thickness.value,
+				stroke: "white",
+				fill: "none",
+				strokeLinecap: "round",	// shape at ends of paths (for smoothing)
+				strokeLinejoin: "round"	// shape at corner of paths (for smoothing)
+			});
+		}
+		else if (currPointer===pointerType.SELECT) {
 			svg.style.cursor = "move";
 			var elem = Snap.getElementByPoint(e.pageX, e.pageY);
 			if ((elem.type=="path" || elem.type=="circle") && elem.data("bbox")) { //bbox so users can't select the bounding box circles
@@ -329,6 +385,15 @@ window.onload = function() {
 				pInfo += "L"+canvasX+","+canvasY;
 				path.attr({d: pInfo});
 			}
+			else if (currPointer===pointerType.ERASE) {
+				isMoved = true;
+				// e is global coordinates, svgDiv is the canvas top left corner
+				canvasX = e.pageX - svgDiv.offsetLeft;
+				canvasY = e.pageY - svgDiv.offsetTop;
+				// L is continuation of a path, i.e. another point
+				pInfo += "L"+canvasX+","+canvasY;
+				path.attr({d: pInfo});
+			}
 			else if (currPointer===pointerType.SELECT && selectedElements.length>0) {
 				//no canvasXY since we only need differences in values
 				selectedElements.forEach(function(elem) {
@@ -347,16 +412,18 @@ window.onload = function() {
 	var endMovement = function(e) {
 		isDown = false;
 		if (currPointer===pointerType.DRAW && path) { // When the user wants to draw
-			// lol why is this "touchend" check here
-			if (e.type != "touchend" && !isMoved) {
-				// the path doesn't show so we make a circle
+			if (!isMoved) {
 				path.remove();
-				// e is global coordinates, svgDiv is the canvas top left corner
-				canvasX = e.pageX - svgDiv.offsetLeft;
-				canvasY = e.pageY - svgDiv.offsetTop;
-				// parameters: center x, center y, radius
-				path = svgSnap.circle(canvasX, canvasY, thickness.value/2);
-				path.attr({fill: wColor});
+				// chrome creates both a touchend event and a mouseup event so this prevents duplicate circles
+				if (e.type != "touchend") {
+					// the path doesn't show so we make a circle
+					// e is global coordinates, svgDiv is the canvas top left corner
+					canvasX = e.pageX - svgDiv.offsetLeft;
+					canvasY = e.pageY - svgDiv.offsetTop;
+					// parameters: center x, center y, radius
+					path = svgSnap.circle(canvasX, canvasY, thickness.value/2);
+					path.attr({fill: selectedColor});
+				}
 			}
 
 			// create a custom bbox now that the path has stopped moving
@@ -367,7 +434,27 @@ window.onload = function() {
 			// forget any previously undone actions
 			actionsToRedo = [];
 		}
-		else if (currPointer==pointerType.SELECT) { // When the user wants to select
+		else if (currPointer===pointerType.ERASE && path) {
+			if (e.type != "touchend" && !isMoved) {
+				// the path doesn't show so we make a circle
+				path.remove();
+				// e is global coordinates, svgDiv is the canvas top left corner
+				canvasX = e.pageX - svgDiv.offsetLeft;
+				canvasY = e.pageY - svgDiv.offsetTop;
+				// parameters: center x, center y, radius
+				path = svgSnap.circle(canvasX, canvasY, thickness.value/2);
+				path.attr({fill: "white"});
+			}
+
+			// create a custom bbox now that the path has stopped moving
+			addSelectionBox(path);
+
+			// PathAction takes a list of paths
+			actionsToUndo.push(new PathAction(null, [path]));
+			// forget any previously undone actions
+			actionsToRedo = [];
+		}
+		else if (currPointer===pointerType.SELECT) { // When the user wants to select
 			svg.style.cursor = "pointer";
 			var changeX, changeY;
 			if (e.type==="touchend") {
@@ -398,7 +485,7 @@ window.onload = function() {
 			endMovement(e);
 		}
 	});
-	//so that moving the mouse off the board ends the movement
+	//so that dragging the mouse off the board ends the movement
 
 	// Disable Page Move
 	document.body.addEventListener("touchmove",function(evt){
@@ -408,19 +495,19 @@ window.onload = function() {
 
 function setPenColor(color) {
 	// set stroke in correct format
-	wColor = color.toRgbString();
+	selectedColor = color.toRgbString();
 	// need to pass every color into ColorAction
 	var multiInfo = [];
 	selectedElements.forEach(function(item) {
 		// get old color, set new color using the correct attribute
 		var info;
 		if (item.type == "path") {
-			info = [item, item.attr("stroke"), wColor];
-			item.attr("stroke", wColor);
+			info = [item, item.attr("stroke"), selectedColor];
+			item.attr("stroke", selectedColor);
 		}
 		else if (item.type == "circle") {
-			info = [item, item.attr("fill"), wColor];
-			item.attr("fill", wColor);
+			info = [item, item.attr("fill"), selectedColor];
+			item.attr("fill", selectedColor);
 		}
 		multiInfo.push(info);
 	});
@@ -442,7 +529,7 @@ function paletteInit() {
 		hideAfterPaletteSelect: true,
 		preferredFormat: "hex",
 		localStorageKey: "color_selector",
-		move: function () {
+		move: function (color) {
 			setPenColor(color);
 		},
 		show: function () {
