@@ -1,112 +1,21 @@
-var svgSnap;
-var wColor = "#000";
-var pointerType = 0; //0 for paint, 1 for select
-var boardActive = true; //false when the spectrum selector is open so users can click out of it
-var actionsToUndo = [];
-var actionsToRedo = [];
+var svgSnap;				// Snap's reference to svg element (basically the canvas)
+var wColor = "#000";		// selected color (why is it wColor again?)
+var boardActive = true; 	// false when the spectrum selector is open so users can click out of it
 var selectedElements = [];
+
 var beginDragX, beginDragY;
-var dragX, dragY;
+var endDragX, endDragY;
 
-var PathAction = function(prev, post) {
-	this.prev = prev;
-	this.post = post;
+var pointerType = {
+	DRAW: 0,
+	SELECT: 1
 };
+var currPointer = pointerType.DRAW;
 
-PathAction.prototype.undoAction = function() {
-	if (this.prev) {
-		this.prev.forEach(function(item) {
-			svgSnap.append(item);
-		});
-	}
-
-	if (this.post) {
-		this.post.forEach(function(item) {
-			item.data("bbox").hide();
-			item.remove();
-		});
-	}
-};
-
-PathAction.prototype.redoAction = function() {
-	if (this.prev) {
-		this.prev.forEach(function(item) {
-			item.data("bbox").hide();
-			item.remove();
-		});
-	}
-
-	if (this.post) {
-		this.post.forEach(function(item) {
-			svgSnap.append(item);
-		});
-	}
-};
-
-var TranslateAction = function(elems, changeX, changeY) {
-	this.elems = elems;
-	this.changeX = changeX;
-	this.changeY = changeY;
-};
-
-TranslateAction.prototype.undoAction = function() {
-	var changeX = this.changeX;
-	var changeY = this.changeY;
-	if (this.elems) {
-		this.elems.forEach(function(elem) {
-			var transM = elem.transform().localMatrix;
-			transM.translate(-changeX, -changeY);
-			elem.data("bbox").transformAll(transM);
-			elem.transform(transM);
-		});
-	}
-};
-
-TranslateAction.prototype.redoAction = function() {
-	var changeX = this.changeX;
-	var changeY = this.changeY;
-	if (this.elems) {
-		this.elems.forEach(function(elem) {
-			var transM = elem.transform().localMatrix;
-			transM.translate(changeX, changeY);
-			elem.data("bbox").transformAll(transM);
-			elem.transform(transM);
-		});
-	}
-};
-
-// for color changes
-var ColorAction = function(elems) {
-	this.elems = elems;
-};
-
-ColorAction.prototype.undoAction = function() {
-	if (this.elems) {
-		this.elems.forEach(function(elem) {
-			if (elem[0].type == "path") {
-				elem[0].attr("stroke", elem[1]);
-			}
-			else if (elem[0].type == "circle") {
-				elem[0].attr("fill", elem[1]);
-			}
-		});
-	}
-};
-
-ColorAction.prototype.redoAction = function() {
-	if (this.elems) {
-		this.elems.forEach(function(elem) {
-			if (elem[0].type == "path") {
-				elem[0].attr("stroke", elem[2]);
-			}
-			else if (elem[0].type == "circle") {
-				elem[0].attr("fill", elem[2]);
-			}
-		});
-	}
-};
+var thickness;				// element holding the path width
 
 function clearSelectedElements() {
+	// remove all selected elements and remove bbox from canvas
 	selectedElements.forEach(function(item) {
 		item.data("bbox").hide();
 	});
@@ -114,14 +23,19 @@ function clearSelectedElements() {
 }
 
 function reportError() {
+	// just in case the canvas doesn't show
+	// NOTE: may remove since alert makes this repetitives
 	var errorText = document.createElement("p");
 	errorText.innerHTML = "Toolbar setup error";
 	document.body.appendChild(errorText);
+
+	alert("Toolbar error");
 }
 
 function toolbarSetup() {
+	thickness = document.getElementById("strokeSize");
+
 	var color = document.getElementById("color"),
-		thickness = document.getElementById("strokeSize"),
 		thicknessVal = document.getElementById("strokeSizeVal"),
 		undoButton = document.getElementById("undo"),
 		redoButton = document.getElementById("redo"),
@@ -130,6 +44,7 @@ function toolbarSetup() {
 		remove = document.getElementById("remove"),
 		svg = document.getElementById("board");
 
+	// null == FALSE
 	if (!color || !thickness || !thicknessVal || !undoButton || !redoButton || !paint || !select || !remove) {
 		reportError();
 		return;
@@ -137,27 +52,30 @@ function toolbarSetup() {
 
 	//toolbar setup, do this first so height calculations work out
 	paletteInit();
-	color.value="#000";
-	thickness.value="5";
+	color.value=wColor;
+
+	var initThickness = "5";
+	thicknessVal.value = initThickness;
+	thickness.value=initThickness;
 	thickness.min="1";
 	thickness.max="300";
-	thicknessVal.value = "5";
+
 	thickness.addEventListener("input", function() {
 		thicknessVal.value = this.value;
 	});
 	thicknessVal.addEventListener("change", function() {
 		var num = parseInt(this.value);
-		if (isNaN(num) || num<1 || num>300) {
-			this.value = thickness.value;
+		if (isNaN(num) || num<parseInt(thickness.min) || num>parseInt(thickness.max)) {
 			alert("Please enter an integer between 1 and 300");
 		}
 		else {
-			this.value = num;
 			thickness.value = num;
 		}
+		this.value = thickness.value;
 	});
 
 	var undo = function() {
+		// undo action and move from undo stack to redo stack
 		if (actionsToUndo.length > 0) {
 			var currAction = actionsToUndo.pop();
 			currAction.undoAction();
@@ -166,6 +84,7 @@ function toolbarSetup() {
 		clearSelectedElements();
 	};
 	var redo = function() {
+		// redo action and move from redo stack to undo stack
 		if (actionsToRedo.length > 0) {
 			var currAction = actionsToRedo.pop();
 			currAction.redoAction();
@@ -175,6 +94,7 @@ function toolbarSetup() {
 	};
 	var del = function() {
 		actionsToUndo.push(new PathAction(selectedElements, null));
+		// hide bbox AND delete each item
 		selectedElements.forEach(function(item) {
 			item.data("bbox").hide();
 			item.remove();
@@ -202,9 +122,10 @@ function toolbarSetup() {
 		}
 	});
 
+	// paint is the default choice
 	paint.classList.add("selected");
 	paint.addEventListener("click", function() {
-		pointerType = 0;
+		currPointer = pointerType.DRAW;
 		svg.style.cursor = "crosshair";
 		if (select.classList.contains("selected")) {
 			paint.classList.add("selected");
@@ -212,12 +133,94 @@ function toolbarSetup() {
 		}
 		clearSelectedElements();
 	});
+
 	select.addEventListener("click", function() {
-		pointerType = 1;
+		currPointer = pointerType.SELECT;
 		svg.style.cursor = "pointer";
 		if (paint.classList.contains("selected")) {
 			select.classList.add("selected");
 			paint.classList.remove("selected");
+		}
+	});
+}
+
+function addSelectionBox(currPath) {
+	var bbox = currPath.getBBox(),
+		x = bbox.x,
+		y = bbox.y,
+		width = bbox.width,
+		height = bbox.height;
+
+	if (currPath.type === "path") {
+		//not a circle, which has the correct bbox for the stroke thickness
+		var offset = thickness.value/2;
+		x -= offset;
+		y -= offset;
+		width += 2*offset;
+		height += 2*offset;
+	}
+
+	// drag circles in the middle of each side and at each corner
+	var c1 = svgSnap.circle(x, y, 2),
+		c2 = svgSnap.circle(x+width/2, y, 2),
+		c3 = svgSnap.circle(x+width, y, 2),
+		c4 = svgSnap.circle(x+width, y+height/2, 2),
+		c5 = svgSnap.circle(x+width, y+height, 2),
+		c6 = svgSnap.circle(x+width/2, y+height, 2),
+		c7 = svgSnap.circle(x, y+height, 2),
+		c8 = svgSnap.circle(x, y+height/2, 2),
+		// rotate circle above the top in the middle
+		c9 = svgSnap.circle(x+width/2, y-20, 2),
+		// rotate circle has a line sticking out of top
+		l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
+
+	var boxData = {
+		//forming the path for the bounding box
+		box: svgSnap
+			.rect(x,y,width, height)
+			.attr({
+				fill: "none",
+				strokeWidth: "1px",
+				stroke: "gray"
+			})
+			.remove(), // don't put it in the canvas
+		recirc: svgSnap.g()
+			.add(c1, c2, c3, c4, c5, c6, c7, c8, c9, l)
+			.attr({
+				fill: "black",
+				strokeWidth: "1px",
+				stroke: "gray"
+			})
+			.remove(), // don't put it in the canvas
+		show: function() {
+			if (this.box.parent() === null) {
+				this.box.appendTo(svgSnap);
+				this.recirc.appendTo(svgSnap);
+			}
+		},
+		hide: function() {
+			this.box.remove();
+			this.recirc.remove();
+		},
+		transformAll: function(transM) {
+			this.box.transform(transM);
+			this.recirc.transform(transM);
+		}
+	};
+
+	// attach custom bbox to the path (not actually visible)
+	currPath.data("bbox", boxData);
+	// mouse listeners automatically check for correct mouse position
+	// handles the "preview" of a bbox
+	currPath
+	.mouseover(function() {
+		if (currPointer==pointerType.SELECT) {
+			this.data("bbox").show();
+		}
+	})
+	.mouseout(function() {
+		if (selectedElements.indexOf(this)===-1) {
+			this.data("bbox").hide();
 		}
 	});
 }
@@ -238,8 +241,8 @@ window.onload = function() {
 		svgDiv = document.getElementById("board-container"),
 		svg = document.getElementById("board");
 
+	// null == FALSE
 	if (!toolBar || !svgDiv || !svg) {
-		// error handling
 		reportError();
 		return;
 	}
@@ -247,46 +250,54 @@ window.onload = function() {
 	// Fill Window Width and Height
 	var toolHeight = toolBar.clientHeight;
 	var width = window.innerWidth;
-
+	var height = window.innerHeight;
+	// if units are strings, then they must have px at the end
+	// height of canvas is the rest of the window height (give or take 10)
 	svgDiv.style.width = width.toString() + "px";
-	svgDiv.style.height = (window.innerHeight - toolHeight - 10).toString() + "px";
+	svgDiv.style.height = (height - toolHeight - 10).toString() + "px";
 	svg.style.width = width.toString() + "px";
-	svg.style.height = (window.innerHeight - toolHeight - 10).toString() + "px";
+	svg.style.height = (height - toolHeight - 10).toString() + "px";
 
 	svgSnap = Snap("#board");
 
 	var isDown = false,
 		isMoved = false,
 		canvasX, canvasY,
-		path, pInfo;
+		path, 	// the svg path element
+		pInfo;	// the data inside the svg path element (xy coordinates)
 
 	// Mouse Event Handlers
 	var beginMovement = function(e) {
+		// if the user is selecting a color, don't draw
 		if (!boardActive) return;
 		isDown = true;
-		if (pointerType===0) { // This is when the user wants to draw
+		if (currPointer===pointerType.DRAW) {
 			isMoved = false;
+			// e is global coordinates, svgDiv is the canvas top left corner
 			canvasX = e.pageX - svgDiv.offsetLeft;
 			canvasY = e.pageY - svgDiv.offsetTop;
+			// M starts a path
 			pInfo = "M"+canvasX+","+canvasY;
 			path = svgSnap.path(pInfo);
 			path.attr({
-				strokeWidth: document.getElementById("strokeSize").value,
+				strokeWidth: thickness.value,
 				stroke: wColor,
 				fill: "none",
-				strokeLinecap: "round",
-				strokeLinejoin: "round"
+				strokeLinecap: "round",	// shape at ends of paths (for smoothing)
+				strokeLinejoin: "round"	// shape at corner of paths (for smoothing)
 			});
 		}
-		else if (pointerType==1) { // When the user wants to select
+		else if (currPointer==pointerType.SELECT) {
 			svg.style.cursor = "move";
 			var elem = Snap.getElementByPoint(e.pageX, e.pageY);
 			if ((elem.type=="path" || elem.type=="circle") && elem.data("bbox")) { //bbox so users can't select the bounding box circles
 				if (e.ctrlKey) {
+					// deselect if already selected, remove both bbox and elem
 					if (selectedElements.indexOf(elem)>=0) {
 						elem.data("bbox").hide();
 						selectedElements.splice(selectedElements.indexOf(elem),1);
 					}
+					// add it if it's not
 					else {
 						selectedElements.push(elem);
 					}
@@ -295,8 +306,9 @@ window.onload = function() {
 					clearSelectedElements();
 					selectedElements.push(elem);
 				}
-				dragX = e.pageX;
-				dragY = e.pageY;
+				//no canvasXY since we only need differences in values
+				endDragX = e.pageX;
+				endDragY = e.pageY;
 				beginDragX = e.pageX;
 				beginDragY = e.pageY;
 			}
@@ -305,119 +317,71 @@ window.onload = function() {
 			}
 		}
 	};
+
 	var movement = function(e) {
 		if (isDown) {
-			if (pointerType===0) { //When the user wants to draw
+			if (currPointer===pointerType.DRAW) {
+				isMoved = true;
+				// e is global coordinates, svgDiv is the canvas top left corner
 				canvasX = e.pageX - svgDiv.offsetLeft;
 				canvasY = e.pageY - svgDiv.offsetTop;
-				isMoved = true;
+				// L is continuation of a path, i.e. another point
 				pInfo += "L"+canvasX+","+canvasY;
 				path.attr({d: pInfo});
 			}
-			else if (pointerType===1 && selectedElements.length>0) {
+			else if (currPointer===pointerType.SELECT && selectedElements.length>0) {
+				//no canvasXY since we only need differences in values
 				selectedElements.forEach(function(elem) {
+					// create translation matrix
 					var transM = elem.transform().localMatrix;
-					transM.translate(e.pageX - dragX, e.pageY - dragY);
+					transM.translate(e.pageX - endDragX, e.pageY - endDragY);
+
 					elem.data("bbox").transformAll(transM);
 					elem.transform(transM);
 				});
-				dragX = e.pageX;
-				dragY = e.pageY;
-				//we can use pageX and pageY here without worrying about the offset since we only need differences in values
+				endDragX = e.pageX;
+				endDragY = e.pageY;
 			}
 		}
 	};
 	var endMovement = function(e) {
 		isDown = false;
-		if (pointerType===0 && path) { // When the user wants to draw
+		if (currPointer===pointerType.DRAW && path) { // When the user wants to draw
+			// lol why is this "touchend" check here
 			if (e.type != "touchend" && !isMoved) {
+				// the path doesn't show so we make a circle
 				path.remove();
+				// e is global coordinates, svgDiv is the canvas top left corner
 				canvasX = e.pageX - svgDiv.offsetLeft;
 				canvasY = e.pageY - svgDiv.offsetTop;
-				path = svgSnap.circle(canvasX, canvasY, document.getElementById("strokeSize").value/2);
+				// parameters: center x, center y, radius
+				path = svgSnap.circle(canvasX, canvasY, thickness.value/2);
 				path.attr({fill: wColor});
 			}
-			var bbox = path.getBBox(),
-				x = bbox.x,
-				y = bbox.y,
-				width = bbox.width,
-				height = bbox.height;
-			if (path.type === "path") {
-				//not a circle, which has the correct bbox for the stroke thickness
-				var offset = document.getElementById("strokeSize").value/2;
-				x -= offset;
-				y -= offset;
-				width += 2*offset;
-				height += 2*offset;
-			}
-			var c1 = svgSnap.circle(x, y, 2),
-				c2 = svgSnap.circle(x+width/2, y, 2),
-				c3 = svgSnap.circle(x+width, y, 2),
-				c4 = svgSnap.circle(x+width, y+height/2, 2),
-				c5 = svgSnap.circle(x+width, y+height, 2),
-				c6 = svgSnap.circle(x+width/2, y+height, 2),
-				c7 = svgSnap.circle(x, y+height, 2),
-				c8 = svgSnap.circle(x, y+height/2, 2),
-				c9 = svgSnap.circle(x+width/2, y-20, 2),
-				l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
-			var boxData = {
-				box: svgSnap
-					.rect(x,y,width, height)
-					.attr({
-						fill: "none",
-						strokeWidth: "1px",
-						stroke: "gray"
-					})
-					.remove(), //forming the path for the bounding box
-				recirc: svgSnap.g()
-					.add(c1, c2, c3, c4, c5, c6, c7, c8, c9, l)
-					.attr({
-						fill: "black",
-						strokeWidth: "1px",
-						stroke: "gray"
-					})
-					.remove(),
-				show: function() {
-					if (this.box.parent() === null) {
-						this.box.appendTo(svgSnap);
-						this.recirc.appendTo(svgSnap);
-					}
-				},
-				hide: function() {
-					this.box.remove();
-					this.recirc.remove();
-				},
-				transformAll: function(transM) {
-					this.box.transform(transM);
-					this.recirc.transform(transM);
-				}
-			};
-			path.data("bbox", boxData);
-			path
-			.mouseover(function() {
-				if (pointerType==1) {
-					this.data("bbox").show();
-				}
-			})
-			.mouseout(function() {
-				if (selectedElements.indexOf(this)===-1) {
-					this.data("bbox").hide();
-				}
-			});
+
+			// create a custom bbox now that the path has stopped moving
+			addSelectionBox(path);
+
+			// PathAction takes a list of paths
 			actionsToUndo.push(new PathAction(null, [path]));
+			// forget any previously undone actions
 			actionsToRedo = [];
 		}
-		else if (pointerType===1) { // When the user wants to select
+		else if (currPointer==pointerType.SELECT) { // When the user wants to select
 			svg.style.cursor = "pointer";
 			var changeX, changeY;
 			if (e.type==="touchend") {
+				// touch events can potentially have multiple points
+				// so we just use the first
 				changeX = e.changedTouches[0].pageX - beginDragX;
 				changeY = e.changedTouches[0].pageY - beginDragY;
 			}
 			else {
+				// e is global coordinates, svgDiv is the canvas top left corner
 				changeX = e.pageX - beginDragX;
 				changeY = e.pageY - beginDragY;
 			}
+			// add an action only if the element actually moved
 			if (selectedElements.length>0 && (changeX!==0 || changeY!==0)) {
 				actionsToUndo.push(new TranslateAction(selectedElements.slice(), changeX, changeY)); //we might need to copy the array
 				actionsToRedo = [];
@@ -443,9 +407,12 @@ window.onload = function() {
 };
 
 function setPenColor(color) {
+	// set stroke in correct format
 	wColor = color.toRgbString();
+	// need to pass every color into ColorAction
 	var multiInfo = [];
 	selectedElements.forEach(function(item) {
+		// get old color, set new color using the correct attribute
 		var info;
 		if (item.type == "path") {
 			info = [item, item.attr("stroke"), wColor];
@@ -476,6 +443,7 @@ function paletteInit() {
 		preferredFormat: "hex",
 		localStorageKey: "color_selector",
 		move: function () {
+			setPenColor(color);
 		},
 		show: function () {
 			boardActive = false;

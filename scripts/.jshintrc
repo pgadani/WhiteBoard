@@ -6,6 +6,9 @@
 	"devel": true,
 
 	"globals": {
-		"Snap": true
+		"Snap": true,
+		"svgSnap": true,
+		"actionsToRedo": true, "actionsToUndo": true,
+		"PathAction": false, "TranslateAction": false, "ColorAction": false
 	}
 }
