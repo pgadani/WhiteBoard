@@ -75,27 +75,23 @@ var ColorAction = function(elems) {
 };
 
 ColorAction.prototype.undoAction = function() {
-	if (this.elems) {
-		this.elems.forEach(function(elem) {
-			if (elem[0].type == "path") {
-				elem[0].attr("stroke", elem[1]);
-			}
-			else if (elem[0].type == "circle") {
-				elem[0].attr("fill", elem[1]);
-			}
-		});
-	}
+	this.elems.forEach(function(elem) {
+		if (elem[0].type == "path") {
+			elem[0].attr("stroke", elem[1]);
+		}
+		else if (elem[0].type == "circle") {
+			elem[0].attr("fill", elem[1]);
+		}
+	});
 };
 
 ColorAction.prototype.redoAction = function() {
-	if (this.elems) {
-		this.elems.forEach(function(elem) {
-			if (elem[0].type == "path") {
-				elem[0].attr("stroke", elem[2]);
-			}
-			else if (elem[0].type == "circle") {
-				elem[0].attr("fill", elem[2]);
-			}
-		});
-	}
+	this.elems.forEach(function(elem) {
+		if (elem[0].type == "path") {
+			elem[0].attr("stroke", elem[2]);
+		}
+		else if (elem[0].type == "circle") {
+			elem[0].attr("fill", elem[2]);
+		}
+	});
 };

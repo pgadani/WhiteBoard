@@ -1,5 +1,5 @@
 var svgSnap;				// Snap's reference to svg element (basically the canvas)
-var selectedColor = "#000";		// selected color (why is it selectedColor again?)
+var selectedColor = "#000";
 var boardActive = true; 	// false when the spectrum selector is open so users can click out of it
 var selectedElements = [];
 
@@ -493,27 +493,27 @@ window.onload = function() {
 	},false);
 };
 
+var multiInfo;
+var oldColors;
+
 function setPenColor(color) {
 	// set stroke in correct format
 	selectedColor = color.toRgbString();
 	// need to pass every color into ColorAction
-	var multiInfo = [];
+	multiInfo = [];
 	selectedElements.forEach(function(item) {
 		// get old color, set new color using the correct attribute
 		var info;
 		if (item.type == "path") {
-			info = [item, item.attr("stroke"), selectedColor];
+			info = [item, oldColors[item.id], selectedColor];
 			item.attr("stroke", selectedColor);
 		}
 		else if (item.type == "circle") {
-			info = [item, item.attr("fill"), selectedColor];
+			info = [item, oldColors[item.id], selectedColor];
 			item.attr("fill", selectedColor);
 		}
 		multiInfo.push(info);
 	});
-	if (selectedElements.length > 0) {
-		actionsToUndo.push(new ColorAction(multiInfo));
-	}
 }
 
 function paletteInit() {
@@ -534,14 +534,28 @@ function paletteInit() {
 		},
 		show: function () {
 			boardActive = false;
+			multiInfo = [];
+			oldColors = [];
+			if (selectedElements.length > 0) {
+				selectedElements.forEach(function (item) {
+					if (item.type == "path") {
+						oldColors[item.id] = item.attr("stroke");
+					}
+					else if (item.type == "circle") {
+						oldColors[item.id] = item.attr("fill");
+					}
+				});
+			}
 		},
 		beforeShow: function () {
 		},
 		hide: function () {
 			boardActive = true;
+			if (selectedElements.length > 0 && multiInfo.length > 0) {
+				actionsToUndo.push(new ColorAction(multiInfo));
+			}
 		},
-		change: function(color) {
-			setPenColor(color);
+		change: function() {
 		},
 		palette: [
 			["rgb(0, 0, 0)", "rgb(67, 67, 67)", "rgb(102, 102, 102)",

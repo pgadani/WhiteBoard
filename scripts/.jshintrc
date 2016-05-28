@@ -9,6 +9,6 @@
 		"Snap": true,
 		"svgSnap": true,
 		"actionsToRedo": true, "actionsToUndo": true,
-		"PathAction": false, "TranslateAction": false, "ColorAction": false
+		"PathAction": true, "TranslateAction": true, "ColorAction": true
 	}
 }
