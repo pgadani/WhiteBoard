@@ -172,6 +172,20 @@ function toolbarSetup() {
 	});
 }
 
+function angleBetween(x1, y1, x2, y2, x3, y3) {
+	// 1 is the starting point, 2 is the center, 3 is the end
+	// Uses a rotation matrix to position one vector on the x-axis
+	// The rotation of x,y is [x, y; -y, x] (makes the second coordinate 0)
+	// After the rotation, the angle is found with atan2
+	var x21 = x2-x1,
+		y21 = y2-y1,
+		x32 = x3-x2,
+		y32 = y3-y2,
+		dot = x21*x32 + y21*y32,
+		cross = x21*y32 - x32*y21;
+	return atan2(cross, dot);
+}
+
 function addSelectionBox(currPath) {
 	var minBBoxSize = 16;
 	var bbox = currPath.getBBox(),
@@ -263,6 +277,10 @@ function addSelectionBox(currPath) {
 			this.data("bbox").hide();
 		}
 	});
+
+	var cx = x + width/2;
+	var cy = y + height/2;
+
 }
 
 window.onload = function() {
