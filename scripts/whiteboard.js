@@ -210,18 +210,18 @@ function toolbarSetup() {
 	select.addEventListener("click", pointerSelect);
 }
 
-function angleBetween(x1, y1, x2, y2, x3, y3) {
+function angleBetween(p1, p2, p3) {
 	// 1 is the starting point, 2 is the center, 3 is the end
 	// Uses a rotation matrix to position one vector on the x-axis
 	// The rotation of x,y is [x, y; -y, x] (makes the second coordinate 0)
 	// After the rotation, the angle is found with atan2
-	var x21 = x2-x1,
-		y21 = y2-y1,
-		x32 = x3-x2,
-		y32 = y3-y2,
-		dot = x21*x32 + y21*y32,
-		cross = x21*y32 - x32*y21;
-	return atan2(cross, dot);
+	var x21 = p2[0]-p1[0];
+	var y21 = p2[1]-p1[1];
+	var x32 = p3[0]-p2[0];
+	var y32 = p3[1]-p2[1];
+	var dot = x21*x32 + y21*y32;
+	var cross = x21*y32 - x32*y21;
+	return Math.atan2(cross, dot);
 }
 
 function addSelectionBox(currPath) {
@@ -252,18 +252,29 @@ function addSelectionBox(currPath) {
 	}
 
 	// drag circles in the middle of each side and at each corner
-	var c1 = svgSnap.circle(x, y, 2),
-		c2 = svgSnap.circle(x+width/2, y, 2),
-		c3 = svgSnap.circle(x+width, y, 2),
-		c4 = svgSnap.circle(x+width, y+height/2, 2),
-		c5 = svgSnap.circle(x+width, y+height, 2),
-		c6 = svgSnap.circle(x+width/2, y+height, 2),
-		c7 = svgSnap.circle(x, y+height, 2),
-		c8 = svgSnap.circle(x, y+height/2, 2),
+	var radius = 10;
+	var c1 = svgSnap.circle(x, y, radius),
+		c2 = svgSnap.circle(x+width/2, y, radius),
+		c3 = svgSnap.circle(x+width, y, radius),
+		c4 = svgSnap.circle(x+width, y+height/2, radius),
+		c5 = svgSnap.circle(x+width, y+height, radius),
+		c6 = svgSnap.circle(x+width/2, y+height, radius),
+		c7 = svgSnap.circle(x, y+height, radius),
+		c8 = svgSnap.circle(x, y+height/2, radius),
 		// rotate circle above the top in the middle
-		c9 = svgSnap.circle(x+width/2, y-20, 2),
+		c9 = svgSnap.circle(x+width/2, y-20, radius),
 		// rotate circle has a line connecting to the box
 		l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
+		// type of circle, 1 corresponds to c1, etc
+		c1.data("ctype", "1");
+		c2.data("ctype", "2");
+		c3.data("ctype", "3");
+		c4.data("ctype", "4");
+		c5.data("ctype", "5");
+		c6.data("ctype", "6");
+		c7.data("ctype", "7");
+		c8.data("ctype", "8");
+		c9.data("ctype", "9");
 
 	var boxData = {
 		//forming the path for the bounding box
@@ -300,7 +311,10 @@ function addSelectionBox(currPath) {
 	};
 
 	// attach custom bbox to the path (not actually visible)
-	currPath.data("bbox", boxData);
+	currPath.data("bbox", boxData); 
+	// attach the path to the bbox to get the path from a bbox circle
+	boxData.recirc.data("path", currPath);
+	boxData.recirc.data("center", [x+width/2, y+height/2]);
 	// mouse listeners automatically check for correct mouse position
 	// handles the "preview" of a bbox
 	currPath
@@ -359,8 +373,9 @@ window.onload = function() {
 	var isDown = false,
 		isMoved = false,
 		canvasX, canvasY,
-		path, 	// the svg path element
-		pInfo;	// the data inside the svg path element (xy coordinates)
+		path, elem, // the svg path element, the element at the user's mouse
+		pInfo,	// the data inside the svg path element (xy coordinates)
+		start, prevAngle; // the starting point and previous angle, used for rotation
 
 	// Mouse Event Handlers
 	var beginMovement = function(e) {
@@ -401,7 +416,7 @@ window.onload = function() {
 		}
 		else if (currPointer===pointerType.SELECT) {
 			svg.style.cursor = "move";
-			var elem = Snap.getElementByPoint(e.pageX, e.pageY);
+			elem = Snap.getElementByPoint(e.pageX, e.pageY);
 			console.log(elem);
 			console.log(elem.data("bbox"));
 			if ((elem.type==="path" || elem.type==="circle") && elem.data("bbox")) { //bbox so users can't select the bounding box circles
@@ -425,6 +440,10 @@ window.onload = function() {
 				endDragY = e.pageY;
 				beginDragX = e.pageX;
 				beginDragY = e.pageY;
+			}
+			else if (elem.data("ctype")) { // The selected element is a circle for a bbox
+				start = [e.pageX, e.pageY];
+				prevAngle = 0;
 			}
 			else {
 				clearSelectedElements();
@@ -452,18 +471,32 @@ window.onload = function() {
 				pInfo += "L"+canvasX+","+canvasY;
 				path.attr({d: pInfo});
 			}
-			else if (currPointer===pointerType.SELECT && selectedElements.length>0) {
-				//no canvasXY since we only need differences in values
-				selectedElements.forEach(function(elem) {
-					// create translation matrix
-					var transM = elem.transform().localMatrix;
-					transM.translate(e.pageX - endDragX, e.pageY - endDragY);
+			else if (currPointer===pointerType.SELECT) {
+				if ((elem.type==="path" || elem.type==="circle") && elem.data("bbox") && selectedElements.length>0) { //bbox so users can't select the bounding box circles
+					//no canvasXY since we only need differences in values
+					selectedElements.forEach(function(elem) {
+						// create translation matrix
+						var transM = elem.transform().localMatrix;
+						transM.translate(e.pageX - endDragX, e.pageY - endDragY);
 
-					elem.data("bbox").transformAll(transM);
-					elem.transform(transM);
-				});
-				endDragX = e.pageX;
-				endDragY = e.pageY;
+						elem.data("bbox").transformAll(transM);
+						elem.transform(transM);
+					});
+					endDragX = e.pageX;
+					endDragY = e.pageY;
+				}
+				else if (elem.data("ctype")) { // The selected element is a circle for a bbox
+					var p = [e.pageX, e.pageY];
+					var group = elem.parentNode;
+					console.log(elem);
+					var center = group.data("center");
+					var cPath = group.data("path");
+					var angle = angleBetween(start, center, p);
+					var transM = path.transform().localMatrix;
+					transM.rotate(angle);
+					path.transform(transM);
+					path.data("bbox").transformAll(transM);
+				}
 			}
 		}
 	};
