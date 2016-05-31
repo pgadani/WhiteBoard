@@ -2,6 +2,7 @@ var svgSnap;				// Snap's reference to svg element (basically the canvas)
 var selectedColor = "#000";
 var boardActive = true; 	// false when the spectrum selector is open so users can click out of it
 var selectedElements = [];
+var copiedElements = [];
 
 var beginDragX, beginDragY;
 var endDragX, endDragY;
@@ -107,6 +108,42 @@ function toolbarSetup() {
 		});
 		selectedElements = [];
 	};
+	var pointerSelect = function() {
+		currPointer = pointerType.SELECT;
+		svg.style.cursor = "pointer";
+		if (!select.classList.contains("selected")) {
+			select.classList.add("selected");
+			erase.classList.remove("selected");
+			paint.classList.remove("selected");
+		}
+	};
+	var copySelectedElements = function() {
+		//clone each element in case it is later deleted/edited
+		copiedElements = [];
+		selectedElements.forEach(function(item) {
+			var clone = item.clone();
+			addSelectionBox(clone);
+			clone.remove();
+			copiedElements.push(clone);
+		});
+	};
+	var pasteSelectedElements = function() {
+		//paste the copied elements, add their bboxes, and select them
+		pointerSelect();
+		clearSelectedElements();
+		copiedElements.forEach(function(item) {
+			item.appendTo(svgSnap);
+			console.log(item);
+			console.log(item.data("bbox"));
+			item.data("bbox").show();
+			selectedElements.push(item);
+		});
+		//not using a copy of the array since we never remove anything from it
+		actionsToUndo.push(new PathAction(null, copiedElements));
+		//reclone copied elements to allow for pasting multiple times
+		copySelectedElements();
+	};
+
 
 	undoButton.addEventListener("click", undo);
 	redoButton.addEventListener("click", redo);
@@ -128,7 +165,15 @@ function toolbarSetup() {
 				selectedElements.forEach(function(item) {
 					item.data("bbox").show();
 				});
+				//switching to selecting pointer
+				pointerSelect();
 			}
+			break;
+		case "c":
+			if (evt.ctrlKey) copySelectedElements();
+			break;
+		case "v":
+			if (evt.ctrlKey) pasteSelectedElements();
 			break;
 		case "Del":
 		case "Delete":
@@ -159,17 +204,10 @@ function toolbarSetup() {
 			paint.classList.remove("selected");
 			select.classList.remove("selected");
 		}
+		clearSelectedElements();
 	});
 
-	select.addEventListener("click", function() {
-		currPointer = pointerType.SELECT;
-		svg.style.cursor = "pointer";
-		if (!select.classList.contains("selected")) {
-			select.classList.add("selected");
-			erase.classList.remove("selected");
-			paint.classList.remove("selected");
-		}
-	});
+	select.addEventListener("click", pointerSelect);
 }
 
 function addSelectionBox(currPath) {
@@ -253,7 +291,7 @@ function addSelectionBox(currPath) {
 	// handles the "preview" of a bbox
 	currPath
 	.mouseover(function(e) {
-		//so that the hovering box is not shown when dragging other elements
+		//checking that no buttons are pressed so that the hovering box is not shown when dragging other elements
 		if (currPointer===pointerType.SELECT && e.buttons===0) {
 			this.data("bbox").show();
 		}
@@ -346,7 +384,9 @@ window.onload = function() {
 		else if (currPointer===pointerType.SELECT) {
 			svg.style.cursor = "move";
 			var elem = Snap.getElementByPoint(e.pageX, e.pageY);
-			if ((elem.type=="path" || elem.type=="circle") && elem.data("bbox")) { //bbox so users can't select the bounding box circles
+			console.log(elem);
+			console.log(elem.data("bbox"));
+			if ((elem.type==="path" || elem.type==="circle") && elem.data("bbox")) { //bbox so users can't select the bounding box circles
 				if (e.ctrlKey) {
 					// deselect if already selected, remove both bbox and elem
 					if (selectedElements.indexOf(elem)>=0) {
@@ -470,7 +510,8 @@ window.onload = function() {
 			}
 			// add an action only if the element actually moved
 			if (selectedElements.length>0 && (changeX!==0 || changeY!==0)) {
-				actionsToUndo.push(new TranslateAction(selectedElements.slice(), changeX, changeY)); //we might need to copy the array
+				actionsToUndo.push(new TranslateAction(selectedElements.slice(), changeX, changeY));
+				//copy selectedElements in case it is later edited
 				actionsToRedo = [];
 			}
 		}
