@@ -311,7 +311,7 @@ function addSelectionBox(currPath) {
 	};
 
 	// attach custom bbox to the path (not actually visible)
-	currPath.data("bbox", boxData); 
+	currPath.data("bbox", boxData);
 	// attach the path to the bbox to get the path from a bbox circle
 	boxData.recirc.data("path", currPath);
 	// mouse listeners automatically check for correct mouse position
@@ -414,14 +414,14 @@ window.onload = function() {
 			});
 		}
 		else if (currPointer===pointerType.SELECT) {
-			console.log("here");
+			// console.log("here");
 			svg.style.cursor = "move";
 			elem = Snap.getElementByPoint(e.pageX, e.pageY);
-			console.log(elem);
+			// console.log(elem);
 			// console.log(elem);
 			// console.log(elem.data("bbox"));
 			if ((elem.type==="path" || elem.type==="circle") && elem.data("bbox")) { //bbox so users can't select the bounding box circles
-				console.log("path");
+				// console.log("path");
 				if (e.ctrlKey) {
 					// deselect if already selected, remove both bbox and elem
 					if (selectedElements.indexOf(elem)>=0) {
@@ -451,7 +451,6 @@ window.onload = function() {
 				}
 			}
 			else {
-				console.log("nothing at all");
 				clearSelectedElements();
 			}
 		}
@@ -482,11 +481,12 @@ window.onload = function() {
 					//no canvasXY since we only need differences in values
 					selectedElements.forEach(function(elem) {
 						// create translation matrix
-						var transM = elem.transform().localMatrix;
-						transM.translate(e.pageX - endDragX, e.pageY - endDragY);
+						var t = new Snap.Matrix();
+						t.translate(e.pageX - endDragX, e.pageY - endDragY);
+						t.add(elem.transform().localMatrix);
 
-						elem.data("bbox").transformAll(transM);
-						elem.transform(transM);
+						elem.data("bbox").transformAll(t);
+						elem.transform(t);
 					});
 					endDragX = e.pageX;
 					endDragY = e.pageY;
@@ -498,7 +498,9 @@ window.onload = function() {
 						var center = [parseInt(bbox.attr("x"))+bbox.attr("width")/2,parseInt(bbox.attr("y"))+bbox.attr("height")/2];
 						var angle = angleBetween(start, center, p)*180/3.14159+180;
 						var transM = path.transform().localMatrix;
+						console.log(transM);
 						transM.rotate(angle-prevAngle, center[0], center[1]);
+						console.log(transM);
 						prevAngle = angle;
 						path.transform(transM);
 						path.data("bbox").transformAll(transM);
