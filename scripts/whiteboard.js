@@ -133,8 +133,8 @@ function toolbarSetup() {
 		clearSelectedElements();
 		copiedElements.forEach(function(item) {
 			item.appendTo(svgSnap);
-			console.log(item);
-			console.log(item.data("bbox"));
+			// console.log(item);
+			// console.log(item.data("bbox"));
 			item.data("bbox").show();
 			selectedElements.push(item);
 		});
@@ -314,7 +314,6 @@ function addSelectionBox(currPath) {
 	currPath.data("bbox", boxData); 
 	// attach the path to the bbox to get the path from a bbox circle
 	boxData.recirc.data("path", currPath);
-	boxData.recirc.data("center", [x+width/2, y+height/2]);
 	// mouse listeners automatically check for correct mouse position
 	// handles the "preview" of a bbox
 	currPath
@@ -415,11 +414,14 @@ window.onload = function() {
 			});
 		}
 		else if (currPointer===pointerType.SELECT) {
+			console.log("here");
 			svg.style.cursor = "move";
 			elem = Snap.getElementByPoint(e.pageX, e.pageY);
 			console.log(elem);
-			console.log(elem.data("bbox"));
+			// console.log(elem);
+			// console.log(elem.data("bbox"));
 			if ((elem.type==="path" || elem.type==="circle") && elem.data("bbox")) { //bbox so users can't select the bounding box circles
+				console.log("path");
 				if (e.ctrlKey) {
 					// deselect if already selected, remove both bbox and elem
 					if (selectedElements.indexOf(elem)>=0) {
@@ -442,10 +444,14 @@ window.onload = function() {
 				beginDragY = e.pageY;
 			}
 			else if (elem.data("ctype")) { // The selected element is a circle for a bbox
-				start = [e.pageX, e.pageY];
-				prevAngle = 0;
+				// console.log("bbox circle");
+				if (elem.data("ctype") == 9) { //For rotation
+					start = [e.pageX, e.pageY];
+					prevAngle = 0;
+				}
 			}
 			else {
+				console.log("nothing at all");
 				clearSelectedElements();
 			}
 		}
@@ -486,16 +492,17 @@ window.onload = function() {
 					endDragY = e.pageY;
 				}
 				else if (elem.data("ctype")) { // The selected element is a circle for a bbox
-					var p = [e.pageX, e.pageY];
-					var group = elem.parentNode;
-					console.log(elem);
-					var center = group.data("center");
-					var cPath = group.data("path");
-					var angle = angleBetween(start, center, p);
-					var transM = path.transform().localMatrix;
-					transM.rotate(angle);
-					path.transform(transM);
-					path.data("bbox").transformAll(transM);
+					if (elem.data("ctype")==9) { // For rotation
+						var p = [e.pageX, e.pageY];
+						var bbox = elem.parent().data("path").data("bbox").box;
+						var center = [parseInt(bbox.attr("x"))+bbox.attr("width")/2,parseInt(bbox.attr("y"))+bbox.attr("height")/2];
+						var angle = angleBetween(start, center, p)*180/3.14159+180;
+						var transM = path.transform().localMatrix;
+						transM.rotate(angle-prevAngle, center[0], center[1]);
+						prevAngle = angle;
+						path.transform(transM);
+						path.data("bbox").transformAll(transM);
+					}
 				}
 			}
 		}
