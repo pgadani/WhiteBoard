@@ -4,8 +4,11 @@ var boardActive = true; 	// false when the spectrum selector is open so users ca
 var selectedElements = [];
 var copiedElements = [];
 
-var beginDragX, beginDragY;
-var endDragX, endDragY;
+var transformType = {
+	TRANSLATE: 0,
+	ROTATE: 1
+};
+var currTransform; //will store type of transformation and associated data like beginning point or angle
 
 var pointerType = {
 	DRAW: 0,
@@ -100,7 +103,7 @@ function toolbarSetup() {
 		clearSelectedElements();
 	};
 	var del = function() {
-		actionsToUndo.push(new PathAction(selectedElements, null));
+		actionsToUndo.push(new PathAction(selectedElements.slice(), null));
 		// hide bbox AND delete each item
 		selectedElements.forEach(function(item) {
 			item.data("bbox").hide();
@@ -121,7 +124,9 @@ function toolbarSetup() {
 		//clone each element in case it is later deleted/edited
 		copiedElements = [];
 		selectedElements.forEach(function(item) {
-			var clone = item.clone();
+			// var clone = item.clone();
+			var clone = svgSnap.el(item.type); //create a new element of the same type
+			clone.attr(item.attr()); //copy all the attributes like path and stroke
 			addSelectionBox(clone);
 			clone.remove();
 			copiedElements.push(clone);
@@ -132,9 +137,7 @@ function toolbarSetup() {
 		pointerSelect();
 		clearSelectedElements();
 		copiedElements.forEach(function(item) {
-			item.appendTo(svgSnap);
-			// console.log(item);
-			// console.log(item.data("bbox"));
+			svgSnap.append(item);
 			item.data("bbox").show();
 			selectedElements.push(item);
 		});
@@ -266,15 +269,15 @@ function addSelectionBox(currPath) {
 		// rotate circle has a line connecting to the box
 		l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
 		// type of circle, 1 corresponds to c1, etc
-		c1.data("ctype", "1");
-		c2.data("ctype", "2");
-		c3.data("ctype", "3");
-		c4.data("ctype", "4");
-		c5.data("ctype", "5");
-		c6.data("ctype", "6");
-		c7.data("ctype", "7");
-		c8.data("ctype", "8");
-		c9.data("ctype", "9");
+	c1.data("ctype", "1");
+	c2.data("ctype", "2");
+	c3.data("ctype", "3");
+	c4.data("ctype", "4");
+	c5.data("ctype", "5");
+	c6.data("ctype", "6");
+	c7.data("ctype", "7");
+	c8.data("ctype", "8");
+	c9.data("ctype", "9");
 
 	var boxData = {
 		//forming the path for the bounding box
@@ -293,11 +296,14 @@ function addSelectionBox(currPath) {
 				strokeWidth: "1px",
 				stroke: "gray"
 			})
+			.data("path",currPath)
 			.remove(), // don't put it in the canvas
 		show: function() {
 			if (this.box.parent() === null) {
-				this.box.appendTo(svgSnap);
-				this.recirc.appendTo(svgSnap);
+				svgSnap.append(this.box);
+				svgSnap.append(this.recirc);
+				// this.box.appendTo(svgSnap);
+				// this.recirc.appendTo(svgSnap);
 			}
 		},
 		hide: function() {
@@ -313,7 +319,8 @@ function addSelectionBox(currPath) {
 	// attach custom bbox to the path (not actually visible)
 	currPath.data("bbox", boxData);
 	// attach the path to the bbox to get the path from a bbox circle
-	boxData.recirc.data("path", currPath);
+	// boxData.recirc.data("path", currPath);
+
 	// mouse listeners automatically check for correct mouse position
 	// handles the "preview" of a bbox
 	currPath
@@ -328,10 +335,6 @@ function addSelectionBox(currPath) {
 			this.data("bbox").hide();
 		}
 	});
-
-	var cx = x + width/2;
-	var cy = y + height/2;
-
 }
 
 window.onload = function() {
@@ -373,8 +376,7 @@ window.onload = function() {
 		isMoved = false,
 		canvasX, canvasY,
 		path, elem, // the svg path element, the element at the user's mouse
-		pInfo,	// the data inside the svg path element (xy coordinates)
-		start, prevAngle; // the starting point and previous angle, used for rotation
+		pInfo;	// the data inside the svg path element (xy coordinates)
 
 	// Mouse Event Handlers
 	var beginMovement = function(e) {
@@ -414,14 +416,10 @@ window.onload = function() {
 			});
 		}
 		else if (currPointer===pointerType.SELECT) {
-			// console.log("here");
 			svg.style.cursor = "move";
 			elem = Snap.getElementByPoint(e.pageX, e.pageY);
-			// console.log(elem);
-			// console.log(elem);
-			// console.log(elem.data("bbox"));
-			if ((elem.type==="path" || elem.type==="circle") && elem.data("bbox")) { //bbox so users can't select the bounding box circles
-				// console.log("path");
+			console.log("ELEM  "+elem.id);
+			if (elem.data("bbox")) { //bbox so users can't select the bounding box circles
 				if (e.ctrlKey) {
 					// deselect if already selected, remove both bbox and elem
 					if (selectedElements.indexOf(elem)>=0) {
@@ -438,20 +436,29 @@ window.onload = function() {
 					selectedElements.push(elem);
 				}
 				//no canvasXY since we only need differences in values
-				endDragX = e.pageX;
-				endDragY = e.pageY;
-				beginDragX = e.pageX;
-				beginDragY = e.pageY;
+				currTransform = {
+					type: transformType.TRANSLATE,
+					start: [e.pageX, e.pageY],
+					end: [e.pageX, e.pageY]
+				};
 			}
 			else if (elem.data("ctype")) { // The selected element is a circle for a bbox
-				// console.log("bbox circle");
-				if (elem.data("ctype") == 9) { //For rotation
-					start = [e.pageX, e.pageY];
-					prevAngle = 0;
+				clearSelectedElements();
+				var selectedPath = elem.parent().data("path");
+				console.log("CIRCLE "+elem.id+" "+selectedPath.id);
+				selectedPath.data("bbox").show();
+				selectedElements.push(selectedPath); // get the original path from the associate circle
+				if (elem.data("ctype") == 9) { // For rotation
+					currTransform = {
+						type: transformType.ROTATE,
+						start: [e.pageX, e.pageY],
+						angle: 0
+					};
 				}
 			}
 			else {
 				clearSelectedElements();
+				currTransform = null;
 			}
 		}
 	};
@@ -476,35 +483,35 @@ window.onload = function() {
 				pInfo += "L"+canvasX+","+canvasY;
 				path.attr({d: pInfo});
 			}
-			else if (currPointer===pointerType.SELECT) {
-				if ((elem.type==="path" || elem.type==="circle") && elem.data("bbox") && selectedElements.length>0) { //bbox so users can't select the bounding box circles
+			else if (currPointer===pointerType.SELECT && currTransform) {
+				if (currTransform.type===transformType.TRANSLATE) {
 					//no canvasXY since we only need differences in values
+					var diffX = e.pageX - currTransform.end[0];
+					var diffY = e.pageY - currTransform.end[1];
+					currTransform.end = [e.pageX, e.pageY];
 					selectedElements.forEach(function(elem) {
 						// create translation matrix
-						var t = new Snap.Matrix();
-						t.translate(e.pageX - endDragX, e.pageY - endDragY);
-						t.add(elem.transform().localMatrix);
-
-						elem.data("bbox").transformAll(t);
-						elem.transform(t);
+						var transM = new Snap.Matrix();
+						transM.translate(diffX, diffY);
+						transM.add(elem.transform().localMatrix);
+						elem.data("bbox").transformAll(transM);
+						elem.transform(transM);
 					});
-					endDragX = e.pageX;
-					endDragY = e.pageY;
 				}
-				else if (elem.data("ctype")) { // The selected element is a circle for a bbox
-					if (elem.data("ctype")==9) { // For rotation
-						var p = [e.pageX, e.pageY];
-						var bbox = elem.parent().data("path").data("bbox").box;
-						var center = [parseInt(bbox.attr("x"))+bbox.attr("width")/2,parseInt(bbox.attr("y"))+bbox.attr("height")/2];
-						var angle = angleBetween(start, center, p)*180/3.14159+180;
-						var transM = path.transform().localMatrix;
-						console.log(transM);
-						transM.rotate(angle-prevAngle, center[0], center[1]);
-						console.log(transM);
-						prevAngle = angle;
-						path.transform(transM);
-						path.data("bbox").transformAll(transM);
-					}
+				else if (currTransform.type===transformType.ROTATE) {
+					//there should be exactly one selected element
+					var p = [e.pageX, e.pageY];
+					console.log(selectedElements[0].id);
+					var bbox = selectedElements[0].data("bbox");
+					var center = [parseInt(bbox.box.attr("x")) + parseInt(bbox.box.attr("width"))/2, parseInt(bbox.box.attr("y")) + parseInt(bbox.box.attr("height"))/2];
+					console.log(center);
+					var angle = angleBetween(currTransform.start, center, p)*180/Math.PI+180;
+					var transM = new Snap.Matrix();
+					transM.rotate(angle-currTransform.angle, center[0], center[1]);
+					transM.add(path.transform().localMatrix);
+					path.transform(transM);
+					bbox.transformAll(transM);
+					currTransform.angle = angle;
 				}
 			}
 		}
@@ -556,23 +563,27 @@ window.onload = function() {
 		}
 		else if (currPointer===pointerType.SELECT) { // When the user wants to select
 			svg.style.cursor = "pointer";
-			var changeX, changeY;
-			if (e.type==="touchend") {
-				// touch events can potentially have multiple points
-				// so we just use the first
-				changeX = e.changedTouches[0].pageX - beginDragX;
-				changeY = e.changedTouches[0].pageY - beginDragY;
-			}
-			else {
-				// e is global coordinates, svgDiv is the canvas top left corner
-				changeX = e.pageX - beginDragX;
-				changeY = e.pageY - beginDragY;
-			}
-			// add an action only if the element actually moved
-			if (selectedElements.length>0 && (changeX!==0 || changeY!==0)) {
-				actionsToUndo.push(new TranslateAction(selectedElements.slice(), changeX, changeY));
-				//copy selectedElements in case it is later edited
-				actionsToRedo = [];
+			if (currTransform) {
+				if (currTransform.type===transformType.TRANSLATE) {
+					var changeX, changeY;
+					if (e.type==="touchend") {
+						// touch events can potentially have multiple points
+						// so we just use the first
+						changeX = e.changedTouches[0].pageX - currTransform.start[0];
+						changeY = e.changedTouches[0].pageY - currTransform.start[1];
+					}
+					else {
+						// e is global coordinates, svgDiv is the canvas top left corner
+						changeX = e.pageX - currTransform.start[0];
+						changeY = e.pageY - currTransform.start[1];
+					}
+					// add an action only if the element actually moved
+					if (selectedElements.length>0 && (changeX!==0 || changeY!==0)) {
+						actionsToUndo.push(new TranslateAction(selectedElements.slice(), changeX, changeY));
+						//copy selectedElements in case it is later edited
+						actionsToRedo = [];
+					}
+				}
 			}
 		}
 	};
