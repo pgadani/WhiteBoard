@@ -445,7 +445,7 @@ window.onload = function() {
 			else if (elem.data("ctype")) { // The selected element is a circle for a bbox
 				clearSelectedElements();
 				var selectedPath = elem.parent().data("path");
-				console.log("CIRCLE "+elem.id+" "+selectedPath.id);
+				// console.log("CIRCLE "+elem.id+" "+selectedPath.id);
 				selectedPath.data("bbox").show();
 				selectedElements.push(selectedPath); // get the original path from the associate circle
 				if (elem.data("ctype") == 9) { // For rotation
@@ -501,10 +501,10 @@ window.onload = function() {
 				else if (currTransform.type===transformType.ROTATE) {
 					//there should be exactly one selected element
 					var p = [e.pageX, e.pageY];
-					console.log(selectedElements[0].id);
+					// console.log(selectedElements[0].id);
 					var bbox = selectedElements[0].data("bbox");
 					var center = [parseInt(bbox.box.attr("x")) + parseInt(bbox.box.attr("width"))/2, parseInt(bbox.box.attr("y")) + parseInt(bbox.box.attr("height"))/2];
-					console.log(center);
+					// console.log(center);
 					var angle = angleBetween(currTransform.start, center, p)*180/Math.PI+180;
 					var transM = new Snap.Matrix();
 					transM.rotate(angle-currTransform.angle, center[0], center[1]);
@@ -583,6 +583,22 @@ window.onload = function() {
 						//copy selectedElements in case it is later edited
 						actionsToRedo = [];
 					}
+				}
+				else if (currTransform.type===transformType.ROTATE) {
+					//there should be exactly one selected element
+					var p = [e.pageX, e.pageY];
+					// console.log(selectedElements[0].id);
+					var bbox = selectedElements[0].data("bbox");
+					var center = [parseInt(bbox.box.attr("x")) + parseInt(bbox.box.attr("width"))/2, parseInt(bbox.box.attr("y")) + parseInt(bbox.box.attr("height"))/2];
+					// console.log(center);
+					var angle = angleBetween(currTransform.start, center, p)*180/Math.PI+180;
+					var transM = new Snap.Matrix();
+					transM.rotate(angle-currTransform.angle, center[0], center[1]);
+					transM.add(path.transform().localMatrix);
+					path.transform(transM);
+					bbox.transformAll(transM);
+					currTransform.angle = angle;
+					actionsToUndo.push(new RotateAction(selectedElements[0], angle, center));
 				}
 			}
 		}
