@@ -48,8 +48,9 @@ TranslateAction.prototype.undoAction = function() {
 	var changeY = this.changeY;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
-			var transM = elem.transform().localMatrix;
+			var transM = new Snap.Matrix();
 			transM.translate(-changeX, -changeY);
+			transM.add(elem.transform().localMatrix);
 			elem.data("bbox").transformAll(transM);
 			elem.transform(transM);
 		});
@@ -61,8 +62,9 @@ TranslateAction.prototype.redoAction = function() {
 	var changeY = this.changeY;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
-			var transM = elem.transform().localMatrix;
+			var transM = new Snap.Matrix();
 			transM.translate(changeX, changeY);
+			transM.add(elem.transform().localMatrix);
 			elem.data("bbox").transformAll(transM);
 			elem.transform(transM);
 		});
