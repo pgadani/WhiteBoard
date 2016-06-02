@@ -306,6 +306,7 @@ function addSelectionBox(currPath) {
 				// this.recirc.appendTo(svgSnap);
 			}
 		},
+		center: [x+width/2, y+height/2],
 		hide: function() {
 			this.box.remove();
 			this.recirc.remove();
@@ -313,6 +314,12 @@ function addSelectionBox(currPath) {
 		transformAll: function(transM) {
 			this.box.transform(transM);
 			this.recirc.transform(transM);
+			// transM.add(currPath.transform().localMatrix.invert());
+			console.log(transM);
+			console.log(transM.get(1));
+			console.log(transM.get(2));
+			var old = this.center;
+			this.center = [transM.get(0)*old[0]+transM.get(2)*old[1]+transM.get(4), transM.get(1)*old[0]+transM.get(3)*old[1]+transM.get(5)];
 		}
 	};
 
@@ -503,8 +510,8 @@ window.onload = function() {
 					var p = [e.pageX, e.pageY];
 					// console.log(selectedElements[0].id);
 					var bbox = selectedElements[0].data("bbox");
-					var center = [parseInt(bbox.box.attr("x")) + parseInt(bbox.box.attr("width"))/2, parseInt(bbox.box.attr("y")) + parseInt(bbox.box.attr("height"))/2];
-					// console.log(center);
+					var center = bbox.center;
+					console.log(center);
 					var angle = angleBetween(currTransform.start, center, p)*180/Math.PI+180;
 					var transM = new Snap.Matrix();
 					transM.rotate(angle-currTransform.angle, center[0], center[1]);
@@ -589,7 +596,7 @@ window.onload = function() {
 					var p = [e.pageX, e.pageY];
 					// console.log(selectedElements[0].id);
 					var bbox = selectedElements[0].data("bbox");
-					var center = [parseInt(bbox.box.attr("x")) + parseInt(bbox.box.attr("width"))/2, parseInt(bbox.box.attr("y")) + parseInt(bbox.box.attr("height"))/2];
+					var center = bbox.center;
 					// console.log(center);
 					var angle = angleBetween(currTransform.start, center, p)*180/Math.PI+180;
 					var transM = new Snap.Matrix();
