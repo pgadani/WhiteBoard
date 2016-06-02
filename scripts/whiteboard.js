@@ -311,15 +311,22 @@ function addSelectionBox(currPath) {
 			this.box.remove();
 			this.recirc.remove();
 		},
-		transformAll: function(transM) {
+		translateAll: function(transX, transY) {
+			var transM = new Snap.Matrix();
+			transM.translate(transX, transY);
+			transM.add(currPath.transform().localMatrix);
+			currPath.transform(transM);
 			this.box.transform(transM);
 			this.recirc.transform(transM);
-			// transM.add(currPath.transform().localMatrix.invert());
-			console.log(transM);
-			console.log(transM.get(1));
-			console.log(transM.get(2));
-			var old = this.center;
-			this.center = [transM.get(0)*old[0]+transM.get(2)*old[1]+transM.get(4), transM.get(1)*old[0]+transM.get(3)*old[1]+transM.get(5)];
+			this.center = [this.center[0]+transX, this.center[1]+transY];
+		},
+		rotateAll: function(angle) {
+			var transM = new Snap.Matrix();
+			transM.rotate(angle, this.center[0], this.center[1]);
+			transM.add(currPath.transform().localMatrix);
+			currPath.transform(transM);
+			this.box.transform(transM);
+			this.recirc.transform(transM);
 		}
 	};
 
@@ -452,7 +459,6 @@ window.onload = function() {
 			else if (elem.data("ctype")) { // The selected element is a circle for a bbox
 				clearSelectedElements();
 				var selectedPath = elem.parent().data("path");
-				// console.log("CIRCLE "+elem.id+" "+selectedPath.id);
 				selectedPath.data("bbox").show();
 				selectedElements.push(selectedPath); // get the original path from the associate circle
 				if (elem.data("ctype") == 9) { // For rotation
@@ -497,27 +503,15 @@ window.onload = function() {
 					var diffY = e.pageY - currTransform.end[1];
 					currTransform.end = [e.pageX, e.pageY];
 					selectedElements.forEach(function(elem) {
-						// create translation matrix
-						var transM = new Snap.Matrix();
-						transM.translate(diffX, diffY);
-						transM.add(elem.transform().localMatrix);
-						elem.data("bbox").transformAll(transM);
-						elem.transform(transM);
+						elem.data("bbox").translateAll(diffX, diffY);
 					});
 				}
 				else if (currTransform.type===transformType.ROTATE) {
 					//there should be exactly one selected element
 					var p = [e.pageX, e.pageY];
-					// console.log(selectedElements[0].id);
 					var bbox = selectedElements[0].data("bbox");
-					var center = bbox.center;
-					console.log(center);
-					var angle = angleBetween(currTransform.start, center, p)*180/Math.PI+180;
-					var transM = new Snap.Matrix();
-					transM.rotate(angle-currTransform.angle, center[0], center[1]);
-					transM.add(path.transform().localMatrix);
-					path.transform(transM);
-					bbox.transformAll(transM);
+					var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
+					bbox.rotateAll(angle-currTransform.angle);
 					currTransform.angle = angle;
 				}
 			}
@@ -594,18 +588,11 @@ window.onload = function() {
 				else if (currTransform.type===transformType.ROTATE) {
 					//there should be exactly one selected element
 					var p = [e.pageX, e.pageY];
-					// console.log(selectedElements[0].id);
 					var bbox = selectedElements[0].data("bbox");
-					var center = bbox.center;
-					// console.log(center);
-					var angle = angleBetween(currTransform.start, center, p)*180/Math.PI+180;
-					var transM = new Snap.Matrix();
-					transM.rotate(angle-currTransform.angle, center[0], center[1]);
-					transM.add(path.transform().localMatrix);
-					path.transform(transM);
-					bbox.transformAll(transM);
+					var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
+					bbox.rotateAll(angle-currTransform.angle);
 					currTransform.angle = angle;
-					actionsToUndo.push(new RotateAction(selectedElements[0], angle, center));
+					actionsToUndo.push(new RotateAction(selectedElements[0], angle));
 				}
 			}
 		}

@@ -48,11 +48,7 @@ TranslateAction.prototype.undoAction = function() {
 	var changeY = this.changeY;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
-			var transM = new Snap.Matrix();
-			transM.translate(-changeX, -changeY);
-			transM.add(elem.transform().localMatrix);
-			elem.data("bbox").transformAll(transM);
-			elem.transform(transM);
+			elem.data("bbox").translateAll(-changeX, -changeY);
 		});
 	}
 };
@@ -62,11 +58,7 @@ TranslateAction.prototype.redoAction = function() {
 	var changeY = this.changeY;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
-			var transM = new Snap.Matrix();
-			transM.translate(changeX, changeY);
-			transM.add(elem.transform().localMatrix);
-			elem.data("bbox").transformAll(transM);
-			elem.transform(transM);
+			elem.data("bbox").translateAll(changeX, changeY);
 		});
 	}
 };
@@ -99,24 +91,15 @@ ColorAction.prototype.redoAction = function() {
 };
 
 // for rotations
-var RotateAction = function(elem, angle, center) {
+var RotateAction = function(elem, angle) {
 	this.elem = elem;
 	this.angle = angle;
-	this.center = center;
 };
 
 RotateAction.prototype.undoAction = function() {
-	var t = new Snap.Matrix();
-	t.rotate(-this.angle, this.center[0], this.center[1]);
-	t.add(this.elem.transform().localMatrix);
-	this.elem.transform(t);
-	this.elem.data("bbox").transformAll(t);
+	this.elem.data("bbox").rotateAll(-this.angle);
 };
 
 RotateAction.prototype.redoAction = function() {
-	var t = new Snap.Matrix();
-	t.rotate(this.angle, this.center[0], this.center[1]);
-	t.add(this.elem.transform().localMatrix);
-	this.elem.transform(t);
-	this.elem.data("bbox").transformAll(t);
+	this.elem.data("bbox").rotateAll(this.angle);
 };
