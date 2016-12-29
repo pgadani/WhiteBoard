@@ -75,21 +75,18 @@ function toolbarSetup() {
 	});
 	thicknessVal.addEventListener("input", function() {
 		var num = parseInt(this.value);
-		if (isNaN(num) || num<parseInt(thickness.min) || num>parseInt(thickness.max)) {
-			// alert("Please enter an integer between 1 and 300");
-			// don't error check here because someone might clear the text field, just change nothing
-		}
-		else {
+		if (!isNaN(num) && num>=parseInt(thickness.min) && num<=parseInt(thickness.max)) {
 			thickness.value = num;
 			this.value = thickness.value;
 		}
+		// else do nothing since the value is invalid but it's intermediate, like if someone clears the text field
 	});
 	thicknessVal.addEventListener("change", function() {
 		var num = parseInt(this.value);
 		if (isNaN(num) || num<parseInt(thickness.min) || num>parseInt(thickness.max)) {
 			alert("Please enter an integer between 1 and 300");
 			thickness.value = initThickness;
-			this.value = initThickness;
+			this.value = thickness.value;
 		}
 	});
 
@@ -268,30 +265,25 @@ function addSelectionBox(currPath) {
 	var c1 = svgSnap.circle(x, y, radius),
 		c2 = svgSnap.circle(x+width/2, y, radius),
 		c3 = svgSnap.circle(x+width, y, radius),
-		c4 = svgSnap.circle(x, y+height/2, radius),
-		c6 = svgSnap.circle(x+width, y+height/2, radius),
+		c4 = svgSnap.circle(x+width, y+height/2, radius),
+		c5 = svgSnap.circle(x+width, y+height, radius),
+		c6 = svgSnap.circle(x+width/2, y+height, radius),
 		c7 = svgSnap.circle(x, y+height, radius),
-		c8 = svgSnap.circle(x+width/2, y+height, radius),
-		c9 = svgSnap.circle(x+width, y+height, radius),
+		c8 = svgSnap.circle(x, y+height/2, radius),
 		// rotate circle above the top in the middle
-		c10 = svgSnap.circle(x+width/2, y-20, radius),
+		c9 = svgSnap.circle(x+width/2, y-20, radius),
 		// rotate circle has a line connecting to the box
 		l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
 		// type of circle, 1 corresponds to c1, etc
-
-	// odd circles are at corners, evens in centers, opposite circle is 10-this
-	// just go in rows and pretend 5 exists
 	c1.data("ctype", "1");
 	c2.data("ctype", "2");
 	c3.data("ctype", "3");
 	c4.data("ctype", "4");
+	c5.data("ctype", "5");
 	c6.data("ctype", "6");
 	c7.data("ctype", "7");
 	c8.data("ctype", "8");
 	c9.data("ctype", "9");
-
-	// the awkward rotation circle
-	c10.data("ctype", "10");
 
 	var boxData = {
 		//forming the path for the bounding box
@@ -304,7 +296,7 @@ function addSelectionBox(currPath) {
 			})
 			.remove(), // don't put it in the canvas
 		recirc: svgSnap.g()
-			.add(c1, c2, c3, c4, c6, c7, c8, c9, c10, l)
+			.add(c1, c2, c3, c4, c5, c6, c7, c8, c9, l)
 			.attr({
 				fill: "black",
 				strokeWidth: "1px",
@@ -316,6 +308,8 @@ function addSelectionBox(currPath) {
 			if (this.box.parent() === null) {
 				svgSnap.append(this.box);
 				svgSnap.append(this.recirc);
+				// this.box.appendTo(svgSnap);
+				// this.recirc.appendTo(svgSnap);
 			}
 		},
 		center: [x+width/2, y+height/2],
@@ -336,19 +330,6 @@ function addSelectionBox(currPath) {
 			var transM = new Snap.Matrix();
 			transM.rotate(angle, this.center[0], this.center[1]);
 			transM.add(currPath.transform().localMatrix);
-			currPath.transform(transM);
-			this.box.transform(transM);
-			this.recirc.transform(transM);
-		},
-		scaleAll: function(scaleX, scaleY, fixedcircle) {
-			var currM = currPath.transform().localMatrix;
-			var circlex = parseInt(fixedcircle.attr("x"));
-			var circley = parseInt(fixedcircle.attr("y"));
-			var cx = currM.x(circlex, circley);
-			var cy = currM.y(circlex, circley);
-			var transM = new Snap.Matrix();
-			transM.scale(scaleX, scaleY, cx, cy);
-			transM.add(currM);
 			currPath.transform(transM);
 			this.box.transform(transM);
 			this.recirc.transform(transM);
@@ -486,15 +467,12 @@ window.onload = function() {
 				var selectedPath = elem.parent().data("path");
 				selectedPath.data("bbox").show();
 				selectedElements.push(selectedPath); // get the original path from the associate circle
-				if (elem.data("ctype") === 10) { // For rotation
+				if (elem.data("ctype") == 9) { // For rotation
 					currTransform = {
 						type: transformType.ROTATE,
 						start: [e.pageX, e.pageY],
 						angle: 0
 					};
-				}
-				else if (elem.data("ctype")%2==0) {
-
 				}
 			}
 			else {
