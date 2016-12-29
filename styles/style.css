@@ -27,7 +27,7 @@ html, body {
 	z-index: 10;
 }
 #strokeSize {
-	width: 300px;
+	width: 150px;
 	height: 1em;
 }
 #strokeSize:focus {
