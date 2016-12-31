@@ -23,6 +23,9 @@ var thickness;				// element holding the path width
 var actionsToUndo = [];
 var actionsToRedo = [];
 
+// For div of svg, global for offset
+var svgDiv;
+
 function clearSelectedElements() {
 	// remove all selected elements and remove bbox from canvas
 	selectedElements.forEach(function(item) {
@@ -266,12 +269,12 @@ function addSelectionBox(currPath) {
 		c2 = svgSnap.circle(x+width/2, y, radius),
 		c3 = svgSnap.circle(x+width, y, radius),
 		c4 = svgSnap.circle(x+width, y+height/2, radius),
-		c5 = svgSnap.circle(x+width, y+height, radius),
-		c6 = svgSnap.circle(x+width/2, y+height, radius),
-		c7 = svgSnap.circle(x, y+height, radius),
-		c8 = svgSnap.circle(x, y+height/2, radius),
+		c6 = svgSnap.circle(x+width, y+height, radius),
+		c7 = svgSnap.circle(x+width/2, y+height, radius),
+		c8 = svgSnap.circle(x, y+height, radius),
+		c9 = svgSnap.circle(x, y+height/2, radius),
 		// rotate circle above the top in the middle
-		c9 = svgSnap.circle(x+width/2, y-20, radius),
+		c10 = svgSnap.circle(x+width/2, y-20, radius),
 		// rotate circle has a line connecting to the box
 		l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
 		// type of circle, 1 corresponds to c1, etc
@@ -279,11 +282,11 @@ function addSelectionBox(currPath) {
 	c2.data("ctype", "2");
 	c3.data("ctype", "3");
 	c4.data("ctype", "4");
-	c5.data("ctype", "5");
 	c6.data("ctype", "6");
 	c7.data("ctype", "7");
 	c8.data("ctype", "8");
 	c9.data("ctype", "9");
+	c10.data("ctype", "10");
 
 	var boxData = {
 		//forming the path for the bounding box
@@ -296,7 +299,7 @@ function addSelectionBox(currPath) {
 			})
 			.remove(), // don't put it in the canvas
 		recirc: svgSnap.g()
-			.add(c1, c2, c3, c4, c5, c6, c7, c8, c9, l)
+			.add(c1, c2, c3, c4, c6, c7, c8, c9, c10, l)
 			.attr({
 				fill: "black",
 				strokeWidth: "1px",
@@ -370,8 +373,8 @@ window.onload = function() {
 
 	// Get DOM elements and null check
 	var toolBar = document.getElementById("toolbar"),
-		svgDiv = document.getElementById("board-container"),
 		svg = document.getElementById("board");
+	svgDiv = document.getElementById("board-container");
 
 	// null == FALSE
 	if (!toolBar || !svgDiv || !svg) {
@@ -403,11 +406,11 @@ window.onload = function() {
 		// if the user is selecting a color, don't draw
 		if (!boardActive) return;
 		isDown = true;
+		// e is global coordinates, svgDiv is the canvas top left corner
+		canvasX = e.pageX - svgDiv.offsetLeft;
+		canvasY = e.pageY - svgDiv.offsetTop;
 		if (currPointer===pointerType.DRAW) {
 			isMoved = false;
-			// e is global coordinates, svgDiv is the canvas top left corner
-			canvasX = e.pageX - svgDiv.offsetLeft;
-			canvasY = e.pageY - svgDiv.offsetTop;
 			// M starts a path
 			pInfo = "M"+canvasX+","+canvasY;
 			path = svgSnap.path(pInfo);
@@ -421,9 +424,6 @@ window.onload = function() {
 		}
 		else if (currPointer===pointerType.ERASE) {
 			isMoved = false;
-			// e is global coordinates, svgDiv is the canvas top left corner
-			canvasX = e.pageX - svgDiv.offsetLeft;
-			canvasY = e.pageY - svgDiv.offsetTop;
 			// M starts a path
 			pInfo = "M"+canvasX+","+canvasY;
 			path = svgSnap.path(pInfo);
@@ -467,10 +467,10 @@ window.onload = function() {
 				var selectedPath = elem.parent().data("path");
 				selectedPath.data("bbox").show();
 				selectedElements.push(selectedPath); // get the original path from the associate circle
-				if (elem.data("ctype") == 9) { // For rotation
+				if (elem.data("ctype") == 10) { // For rotation
 					currTransform = {
 						type: transformType.ROTATE,
-						start: [e.pageX, e.pageY],
+						start: [canvasX, canvasY],
 						angle: 0
 					};
 				}
@@ -484,20 +484,17 @@ window.onload = function() {
 
 	var movement = function(e) {
 		if (isDown) {
+			// e is global coordinates, svgDiv is the canvas top left corner
+			canvasX = e.pageX - svgDiv.offsetLeft;
+			canvasY = e.pageY - svgDiv.offsetTop;
 			if (currPointer===pointerType.DRAW) {
 				isMoved = true;
-				// e is global coordinates, svgDiv is the canvas top left corner
-				canvasX = e.pageX - svgDiv.offsetLeft;
-				canvasY = e.pageY - svgDiv.offsetTop;
 				// L is continuation of a path, i.e. another point
 				pInfo += "L"+canvasX+","+canvasY;
 				path.attr({d: pInfo});
 			}
 			else if (currPointer===pointerType.ERASE) {
 				isMoved = true;
-				// e is global coordinates, svgDiv is the canvas top left corner
-				canvasX = e.pageX - svgDiv.offsetLeft;
-				canvasY = e.pageY - svgDiv.offsetTop;
 				// L is continuation of a path, i.e. another point
 				pInfo += "L"+canvasX+","+canvasY;
 				path.attr({d: pInfo});
@@ -514,7 +511,7 @@ window.onload = function() {
 				}
 				else if (currTransform.type===transformType.ROTATE) {
 					//there should be exactly one selected element
-					var p = [e.pageX, e.pageY];
+					var p = [canvasX, canvasY];
 					var bbox = selectedElements[0].data("bbox");
 					var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
 					bbox.rotateAll(angle-currTransform.angle);
@@ -525,15 +522,15 @@ window.onload = function() {
 	};
 	var endMovement = function(e) {
 		isDown = false;
+			// e is global coordinates, svgDiv is the canvas top left corner
+			canvasX = e.pageX - svgDiv.offsetLeft;
+			canvasY = e.pageY - svgDiv.offsetTop;
 		if (currPointer===pointerType.DRAW && path) { // When the user wants to draw
 			if (!isMoved) {
 				path.remove();
 				// chrome creates both a touchend event and a mouseup event so this prevents duplicate circles
 				if (e.type != "touchend") {
 					// the path doesn't show so we make a circle
-					// e is global coordinates, svgDiv is the canvas top left corner
-					canvasX = e.pageX - svgDiv.offsetLeft;
-					canvasY = e.pageY - svgDiv.offsetTop;
 					// parameters: center x, center y, radius
 					path = svgSnap.circle(canvasX, canvasY, thickness.value/2);
 					path.attr({fill: selectedColor});
@@ -552,9 +549,6 @@ window.onload = function() {
 			if (e.type != "touchend" && !isMoved) {
 				// the path doesn't show so we make a circle
 				path.remove();
-				// e is global coordinates, svgDiv is the canvas top left corner
-				canvasX = e.pageX - svgDiv.offsetLeft;
-				canvasY = e.pageY - svgDiv.offsetTop;
 				// parameters: center x, center y, radius
 				path = svgSnap.circle(canvasX, canvasY, thickness.value/2);
 				path.attr({fill: "white"});
@@ -593,7 +587,7 @@ window.onload = function() {
 				}
 				else if (currTransform.type===transformType.ROTATE) {
 					//there should be exactly one selected element
-					var p = [e.pageX, e.pageY];
+					var p = [canvasX, canvasY];
 					var bbox = selectedElements[0].data("bbox");
 					var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
 					bbox.rotateAll(angle-currTransform.angle);
