@@ -586,13 +586,15 @@ window.onload = function() {
 					}
 				}
 				else if (currTransform.type===transformType.ROTATE) {
-					//there should be exactly one selected element
-					var p = [canvasX, canvasY];
-					var bbox = selectedElements[0].data("bbox");
-					var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
-					bbox.rotateAll(angle-currTransform.angle);
-					currTransform.angle = angle;
-					actionsToUndo.push(new RotateAction(selectedElements[0], angle));
+					if (e.type != "touchend") {
+						//there should be exactly one selected element
+						var p = [canvasX, canvasY];
+						var bbox = selectedElements[0].data("bbox");
+						var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
+						bbox.rotateAll(angle-currTransform.angle);
+						currTransform.angle = angle;
+					}
+					actionsToUndo.push(new RotateAction(selectedElements[0], currTransform.angle));
 				}
 			}
 		}
