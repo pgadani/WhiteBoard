@@ -432,6 +432,7 @@ window.onload = function() {
 		canvasX = e.pageX - svgDiv.offsetLeft;
 		canvasY = e.pageY - svgDiv.offsetTop;
 		if (e.type === "touchend") {
+			// if the movement was a touchend, pageX/Y will be NaN because nothing is being touched
 			canvasX = e.changedTouches[0].pageX - svgDiv.offsetLeft;
 			canvasY = e.changedTouches[0].pageY - svgDiv.offsetTop;
 		}
@@ -499,14 +500,12 @@ window.onload = function() {
 					}
 				}
 				else if (currTransform.type===transformType.ROTATE) {
-					//if (e.type != "touchend") {
-						//there should be exactly one selected element
-						var p = [canvasX, canvasY];
-						var bbox = selectedElements[0].data("bbox");
-						var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
-						bbox.rotateAll(angle-currTransform.angle);
-						currTransform.angle = angle;
-					//}
+					//there should be exactly one selected element
+					var p = [canvasX, canvasY];
+					var bbox = selectedElements[0].data("bbox");
+					var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
+					bbox.rotateAll(angle-currTransform.angle);
+					currTransform.angle = angle;
 					actionsToUndo.push(new RotateAction(selectedElements[0], currTransform.angle));
 					actionsToRedo = [];
 				}
