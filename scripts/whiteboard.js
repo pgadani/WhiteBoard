@@ -431,6 +431,11 @@ window.onload = function() {
 		// e is global coordinates, svgDiv is the canvas top left corner
 		canvasX = e.pageX - svgDiv.offsetLeft;
 		canvasY = e.pageY - svgDiv.offsetTop;
+		if (e.type === "touchend") {
+			canvasX = e.changedTouches[0].pageX - svgDiv.offsetLeft;
+			canvasY = e.changedTouches[0].pageY - svgDiv.offsetTop;
+		}
+		console.log(e.type);
 		if (currPointer===pointerType.DRAW && path) { // When the user wants to draw
 			if (!isMoved) {
 				path.remove();
@@ -443,13 +448,15 @@ window.onload = function() {
 				}
 			}
 
-			// create a custom bbox now that the path has stopped moving
-			addSelectionBox(path);
+			if (isMoved || e.type!="touchend") {
+				// create a custom bbox now that the path has stopped moving
+				addSelectionBox(path);
 
-			// PathAction takes a list of paths
-			actionsToUndo.push(new PathAction(null, [path]));
-			// forget any previously undone actions
-			actionsToRedo = [];
+				// PathAction takes a list of paths
+				actionsToUndo.push(new PathAction(null, [path]));
+				// forget any previously undone actions
+				actionsToRedo = [];
+			}
 		}
 		else if (currPointer===pointerType.ERASE && path) {
 			if (e.type != "touchend" && !isMoved) {
@@ -492,14 +499,14 @@ window.onload = function() {
 					}
 				}
 				else if (currTransform.type===transformType.ROTATE) {
-					if (e.type != "touchend") {
+					//if (e.type != "touchend") {
 						//there should be exactly one selected element
 						var p = [canvasX, canvasY];
 						var bbox = selectedElements[0].data("bbox");
 						var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
 						bbox.rotateAll(angle-currTransform.angle);
 						currTransform.angle = angle;
-					}
+					//}
 					actionsToUndo.push(new RotateAction(selectedElements[0], currTransform.angle));
 					actionsToRedo = [];
 				}
