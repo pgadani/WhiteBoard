@@ -237,108 +237,7 @@ function angleBetween(p1, p2, p3) {
 }
 
 function addSelectionBox(currPath) {
-	var minBBoxSize = 16;
-	var bbox = currPath.getBBox(),
-		x = bbox.x,
-		y = bbox.y,
-		width = bbox.width,
-		height = bbox.height;
-
-	if (currPath.type === "path") {
-		//not a circle, which has the correct bbox for the stroke thickness
-		var offset = thickness.value/2;
-		x -= offset;
-		y -= offset;
-		width += 2*offset;
-		height += 2*offset;
-	}
-
-	//creating a larger bbox for small elements to make resizing/rotating easier
-	if (width < minBBoxSize) {
-		x-=minBBoxSize/2;
-		width+=minBBoxSize;
-	}
-	if (height < minBBoxSize) {
-		y-=minBBoxSize/2;
-		height+=minBBoxSize;
-	}
-
-	// drag circles in the middle of each side and at each corner
-	var radius = 10;
-	var c1 = svgSnap.circle(x, y, radius),
-		c2 = svgSnap.circle(x+width/2, y, radius),
-		c3 = svgSnap.circle(x+width, y, radius),
-		c4 = svgSnap.circle(x+width, y+height/2, radius),
-		c6 = svgSnap.circle(x+width, y+height, radius),
-		c7 = svgSnap.circle(x+width/2, y+height, radius),
-		c8 = svgSnap.circle(x, y+height, radius),
-		c9 = svgSnap.circle(x, y+height/2, radius),
-		// rotate circle above the top in the middle
-		c10 = svgSnap.circle(x+width/2, y-20, radius),
-		// rotate circle has a line connecting to the box
-		l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
-		// type of circle, 1 corresponds to c1, etc
-	c1.data("ctype", "1");
-	c2.data("ctype", "2");
-	c3.data("ctype", "3");
-	c4.data("ctype", "4");
-	c6.data("ctype", "6");
-	c7.data("ctype", "7");
-	c8.data("ctype", "8");
-	c9.data("ctype", "9");
-	c10.data("ctype", "10");
-
-	var boxData = {
-		//forming the path for the bounding box
-		box: svgSnap
-			.rect(x,y,width, height)
-			.attr({
-				fill: "none",
-				strokeWidth: "1px",
-				stroke: "gray"
-			})
-			.remove(), // don't put it in the canvas
-		recirc: svgSnap.g()
-			.add(c1, c2, c3, c4, c6, c7, c8, c9, c10, l)
-			.attr({
-				fill: "black",
-				strokeWidth: "1px",
-				stroke: "gray"
-			})
-			.data("path",currPath)
-			.remove(), // don't put it in the canvas
-		show: function() {
-			if (this.box.parent() === null) {
-				svgSnap.append(this.box);
-				svgSnap.append(this.recirc);
-				// this.box.appendTo(svgSnap);
-				// this.recirc.appendTo(svgSnap);
-			}
-		},
-		center: [x+width/2, y+height/2],
-		hide: function() {
-			this.box.remove();
-			this.recirc.remove();
-		},
-		translateAll: function(transX, transY) {
-			var transM = new Snap.Matrix();
-			transM.translate(transX, transY);
-			transM.add(currPath.transform().localMatrix);
-			currPath.transform(transM);
-			this.box.transform(transM);
-			this.recirc.transform(transM);
-			this.center = [this.center[0]+transX, this.center[1]+transY];
-		},
-		rotateAll: function(angle) {
-			var transM = new Snap.Matrix();
-			transM.rotate(angle, this.center[0], this.center[1]);
-			transM.add(currPath.transform().localMatrix);
-			currPath.transform(transM);
-			this.box.transform(transM);
-			this.recirc.transform(transM);
-		}
-	};
-
+	var boxData = new SelectionBox(currPath);
 	// attach custom bbox to the path (not actually visible)
 	currPath.data("bbox", boxData);
 	// attach the path to the bbox to get the path from a bbox circle
@@ -370,11 +269,15 @@ window.onload = function() {
 	document.body.ondrop = function() {
 		return false;
 	};
+	// Disable Page Move
+	document.body.addEventListener("touchmove",function(evt){
+		evt.preventDefault();
+	},false);
 
 	// Get DOM elements and null check
 	var toolBar = document.getElementById("toolbar"),
-		svg = document.getElementById("board");
-	svgDiv = document.getElementById("board-container");
+		svg = document.getElementById("board"),
+		svgDiv = document.getElementById("board-container");
 
 	// null == FALSE
 	if (!toolBar || !svgDiv || !svg) {
@@ -383,9 +286,9 @@ window.onload = function() {
 	}
 
 	// Fill Window Width and Height
-	var toolHeight = toolBar.clientHeight;
-	var width = window.innerWidth;
-	var height = window.innerHeight;
+	var toolHeight = toolBar.clientHeight,
+		width = window.innerWidth,
+		height = window.innerHeight;
 	// if units are strings, then they must have px at the end
 	// height of canvas is the rest of the window height (give or take 10)
 	svgDiv.style.width = width.toString() + "px";
@@ -440,6 +343,7 @@ window.onload = function() {
 			elem = Snap.getElementByPoint(e.pageX, e.pageY);
 			console.log("ELEM  "+elem.id);
 			if (elem.data("bbox")) { //bbox so users can't select the bounding box circles
+				console.log("Select");
 				if (e.ctrlKey) {
 					// deselect if already selected, remove both bbox and elem
 					if (selectedElements.indexOf(elem)>=0) {
@@ -468,6 +372,7 @@ window.onload = function() {
 				selectedPath.data("bbox").show();
 				selectedElements.push(selectedPath); // get the original path from the associate circle
 				if (elem.data("ctype") == 10) { // For rotation
+					console.log("Start Rotate");
 					currTransform = {
 						type: transformType.ROTATE,
 						start: [canvasX, canvasY],
@@ -520,11 +425,12 @@ window.onload = function() {
 			}
 		}
 	};
+
 	var endMovement = function(e) {
 		isDown = false;
-			// e is global coordinates, svgDiv is the canvas top left corner
-			canvasX = e.pageX - svgDiv.offsetLeft;
-			canvasY = e.pageY - svgDiv.offsetTop;
+		// e is global coordinates, svgDiv is the canvas top left corner
+		canvasX = e.pageX - svgDiv.offsetLeft;
+		canvasY = e.pageY - svgDiv.offsetTop;
 		if (currPointer===pointerType.DRAW && path) { // When the user wants to draw
 			if (!isMoved) {
 				path.remove();
@@ -593,6 +499,7 @@ window.onload = function() {
 					bbox.rotateAll(angle-currTransform.angle);
 					currTransform.angle = angle;
 					actionsToUndo.push(new RotateAction(selectedElements[0], angle));
+					actionsToRedo = [];
 				}
 			}
 		}
@@ -608,11 +515,6 @@ window.onload = function() {
 		}
 	});
 	//so that dragging the mouse off the board ends the movement
-
-	// Disable Page Move
-	document.body.addEventListener("touchmove",function(evt){
-		evt.preventDefault();
-	},false);
 };
 
 var multiInfo;
