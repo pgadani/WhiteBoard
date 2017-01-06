@@ -40,15 +40,15 @@ var SelectionBox = function(currPath) {
 		// rotate circle has a line connecting to the box
 		l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
 		// type of circle, 1 corresponds to c1, etc
-	c1.data("ctype", "1");
-	c2.data("ctype", "2");
-	c3.data("ctype", "3");
-	c4.data("ctype", "4");
-	c6.data("ctype", "6");
-	c7.data("ctype", "7");
-	c8.data("ctype", "8");
-	c9.data("ctype", "9");
-	c10.data("ctype", "10");
+	c1.addClass("recirc c1");
+	c2.addClass("recirc c2");
+	c3.addClass("recirc c3");
+	c4.addClass("recirc c4");
+	c6.addClass("recirc c6");
+	c7.addClass("recirc c7");
+	c8.addClass("recirc c8");
+	c9.addClass("recirc c9");
+	c10.addClass("recirc c10");
 
 	this.box = svgSnap
 			.rect(x,y,width, height)
@@ -65,16 +65,16 @@ var SelectionBox = function(currPath) {
 				strokeWidth: "1px",
 				stroke: "gray"
 			})
-			.data("path",currPath)
 			.remove(); // don't put it in the canvas
+	$(this.recirc.node).data("path",currPath);
 	this.center = [x+width/2, y+height/2];
 	this.currPath = currPath;
 };
 
 SelectionBox.prototype.show = function() {
 	if (this.box.parent() === null) {
-		svgSnap.append(this.box);
-		svgSnap.append(this.recirc);
+		this.box.insertAfter(this.currPath);
+		this.recirc.insertAfter(this.currPath);
 	}
 };
 

@@ -29,7 +29,7 @@ var svgDiv;
 function clearSelectedElements() {
 	// remove all selected elements and remove bbox from canvas
 	selectedElements.forEach(function(item) {
-		item.data("bbox").hide();
+		$(item.node).data("bbox").hide();
 	});
 	selectedElements = [];
 }
@@ -115,7 +115,7 @@ function toolbarSetup() {
 		actionsToUndo.push(new PathAction(selectedElements.slice(), null));
 		// hide bbox AND delete each item
 		selectedElements.forEach(function(item) {
-			item.data("bbox").hide();
+			$(item.node).data("bbox").hide();
 			item.remove();
 		});
 		selectedElements = [];
@@ -147,7 +147,7 @@ function toolbarSetup() {
 		clearSelectedElements();
 		copiedElements.forEach(function(item) {
 			svgSnap.append(item);
-			item.data("bbox").show();
+			$(item.node).data("bbox").show();
 			selectedElements.push(item);
 		});
 		//not using a copy of the array since we never remove anything from it
@@ -175,7 +175,7 @@ function toolbarSetup() {
 				//selecting all the elements within the svg, can't use * because of description and other children that can't be displayed
 				selectedElements = [].concat(svgSnap.selectAll("path").items, svgSnap.selectAll("circle").items);
 				selectedElements.forEach(function(item) {
-					item.data("bbox").show();
+					$(item.node).data("bbox").show();
 				});
 				//switching to selecting pointer
 				pointerSelect();
@@ -239,7 +239,8 @@ function angleBetween(p1, p2, p3) {
 function addSelectionBox(currPath) {
 	var boxData = new SelectionBox(currPath);
 	// attach custom bbox to the path (not actually visible)
-	currPath.data("bbox", boxData);
+	path = $(currPath.node);
+	path.data("bbox", boxData);
 	// attach the path to the bbox to get the path from a bbox circle
 	// boxData.recirc.data("path", currPath);
 
@@ -249,12 +250,12 @@ function addSelectionBox(currPath) {
 	.mouseover(function(e) {
 		//checking that no buttons are pressed so that the hovering box is not shown when dragging other elements
 		if (currPointer===pointerType.SELECT && e.buttons===0) {
-			this.data("bbox").show();
+			$(this.node).data("bbox").show();
 		}
 	})
 	.mouseout(function() {
 		if (selectedElements.indexOf(this)===-1) {
-			this.data("bbox").hide();
+			$(this.node).data("bbox").hide();
 		}
 	});
 }
@@ -340,24 +341,24 @@ window.onload = function() {
 		}
 		else if (currPointer===pointerType.SELECT) {
 			svg.style.cursor = "move";
-			elem = Snap.getElementByPoint(e.pageX, e.pageY);
-			console.log("ELEM  "+elem.id);
+			elem = $(e.target);
 			if (elem.data("bbox")) { //bbox so users can't select the bounding box circles
 				console.log("Select");
+				var currPath = elem.data("bbox").currPath;
 				if (e.ctrlKey) {
 					// deselect if already selected, remove both bbox and elem
-					if (selectedElements.indexOf(elem)>=0) {
+					if (selectedElements.indexOf(currPath)>=0) {
 						elem.data("bbox").hide();
-						selectedElements.splice(selectedElements.indexOf(elem),1);
+						selectedElements.splice(selectedElements.indexOf(currPath),1);
 					}
 					// add it if it's not
 					else {
-						selectedElements.push(elem);
+						selectedElements.push(currPath);
 					}
 				}
 				else if (selectedElements.indexOf(elem)===-1){
 					clearSelectedElements();
-					selectedElements.push(elem);
+					selectedElements.push(currPath);
 				}
 				//no canvasXY since we only need differences in values
 				currTransform = {
@@ -366,12 +367,13 @@ window.onload = function() {
 					end: [e.pageX, e.pageY]
 				};
 			}
-			else if (elem.data("ctype")) { // The selected element is a circle for a bbox
+			else if (elem.hasClass("recirc")) { // The selected element is a circle for a bbox
 				clearSelectedElements();
 				var selectedPath = elem.parent().data("path");
-				selectedPath.data("bbox").show();
+				console.log(selectedPath);
+				$(selectedPath.node).data("bbox").show();
 				selectedElements.push(selectedPath); // get the original path from the associate circle
-				if (elem.data("ctype") == 10) { // For rotation
+				if (elem.hasClass("c10")) { // For rotation
 					console.log("Start Rotate");
 					currTransform = {
 						type: transformType.ROTATE,
@@ -411,13 +413,13 @@ window.onload = function() {
 					var diffY = e.pageY - currTransform.end[1];
 					currTransform.end = [e.pageX, e.pageY];
 					selectedElements.forEach(function(elem) {
-						elem.data("bbox").translateAll(diffX, diffY);
+						$(elem.node).data("bbox").translateAll(diffX, diffY);
 					});
 				}
 				else if (currTransform.type===transformType.ROTATE) {
-					//there should be exactly one selected element
 					var p = [canvasX, canvasY];
-					var bbox = selectedElements[0].data("bbox");
+					//there should be exactly one selected element
+					var bbox = $(selectedElements[0].node).data("bbox");
 					var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
 					bbox.rotateAll(angle-currTransform.angle);
 					currTransform.angle = angle;
@@ -502,7 +504,7 @@ window.onload = function() {
 				else if (currTransform.type===transformType.ROTATE) {
 					//there should be exactly one selected element
 					var p = [canvasX, canvasY];
-					var bbox = selectedElements[0].data("bbox");
+					var bbox = $(selectedElements[0].node).data("bbox");
 					var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
 					bbox.rotateAll(angle-currTransform.angle);
 					currTransform.angle = angle;
