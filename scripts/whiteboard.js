@@ -281,7 +281,7 @@ window.onload = function() {
 				strokeLinejoin: "round"	// shape at corner of paths (for smoothing)
 			});
 		}
-		else { // select
+		else if (currPointer===pointerType.SELECT) {
 			svg.style.cursor = "move";
 			elem = Snap.getElementByPoint(e.pageX, e.pageY);
 			console.log("ELEM  "+elem.id);
@@ -335,13 +335,7 @@ window.onload = function() {
 			// e is global coordinates, svgDiv is the canvas top left corner
 			canvasX = e.pageX - svgDiv.offsetLeft;
 			canvasY = e.pageY - svgDiv.offsetTop;
-			if (currPointer===pointerType.DRAW) {
-				isMoved = true;
-				// L is continuation of a path, i.e. another point
-				pInfo += "L"+canvasX+","+canvasY;
-				path.attr({d: pInfo});
-			}
-			else if (currPointer===pointerType.ERASE) {
+			if (currPointer===pointerType.DRAW || currPointer===pointerType.ERASE) {
 				isMoved = true;
 				// L is continuation of a path, i.e. another point
 				pInfo += "L"+canvasX+","+canvasY;
@@ -380,16 +374,16 @@ window.onload = function() {
 			canvasY = e.changedTouches[0].pageY - svgDiv.offsetTop;
 		}
 		console.log(e.type);
-		if (currPointer===pointerType.DRAW && path) { // When the user wants to draw
-			if (!isMoved) {
+		if ( (currPointer===pointerType.DRAW || currPointer===pointerType.ERASE) && path) { // When the user wants to draw
+			var color = (currPointer===pointerType.DRAW) ? selectedColor:"white";
+			if (!isMoved && e.type != "touchend") {
 				path.remove();
 				// chrome creates both a touchend event and a mouseup event so this prevents duplicate circles
-				if (e.type != "touchend") {
-					// the path doesn't show so we make a circle
-					// parameters: center x, center y, radius
-					path = svgSnap.circle(canvasX, canvasY, thickness.value/2);
-					path.attr({fill: selectedColor});
-				}
+				// the path doesn't show so we make a circle
+				// parameters: center x, center y, radius
+				path = svgSnap
+					.circle(canvasX, canvasY, thickness.value/2)
+					.attr({fill: color});
 			}
 
 			if (isMoved || e.type!="touchend") {
@@ -401,23 +395,6 @@ window.onload = function() {
 				// forget any previously undone actions
 				actionsToRedo = [];
 			}
-		}
-		else if (currPointer===pointerType.ERASE && path) {
-			if (e.type != "touchend" && !isMoved) {
-				// the path doesn't show so we make a circle
-				path.remove();
-				// parameters: center x, center y, radius
-				path = svgSnap.circle(canvasX, canvasY, thickness.value/2);
-				path.attr({fill: "white"});
-			}
-
-			// create a custom bbox now that the path has stopped moving
-			addMetadata(path);
-
-			// PathAction takes a list of paths
-			actionsToUndo.push(new PathAction(null, [path]));
-			// forget any previously undone actions
-			actionsToRedo = [];
 		}
 		else if (currPointer===pointerType.SELECT) { // When the user wants to select
 			svg.style.cursor = "pointer";
