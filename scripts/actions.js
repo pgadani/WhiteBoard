@@ -16,7 +16,7 @@ PathAction.prototype.undoAction = function() {
 
 	if (this.post) {
 		this.post.forEach(function(item) {
-			item.data("bbox").hide();
+			metadata[item.attr("id").slice(1)].hide();
 			item.remove();
 		});
 	}
@@ -25,7 +25,7 @@ PathAction.prototype.undoAction = function() {
 PathAction.prototype.redoAction = function() {
 	if (this.prev) {
 		this.prev.forEach(function(item) {
-			item.data("bbox").hide();
+			metadata[item.attr("id").slice(1)].hide();
 			item.remove();
 		});
 	}
@@ -48,7 +48,7 @@ TranslateAction.prototype.undoAction = function() {
 	var changeY = this.changeY;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
-			elem.data("bbox").translateAll(-changeX, -changeY);
+			metadata[elem.attr("id").slice(1)].translateAll(-changeX, -changeY);
 		});
 	}
 };
@@ -58,7 +58,7 @@ TranslateAction.prototype.redoAction = function() {
 	var changeY = this.changeY;
 	if (this.elems) {
 		this.elems.forEach(function(elem) {
-			elem.data("bbox").translateAll(changeX, changeY);
+			metadata[elem.attr("id").slice(1)].translateAll(changeX, changeY);
 		});
 	}
 };
@@ -97,9 +97,9 @@ var RotateAction = function(elem, angle) {
 };
 
 RotateAction.prototype.undoAction = function() {
-	this.elem.data("bbox").rotateAll(-this.angle);
+	metadata[this.elem.attr("id").slice(1)].rotateAll(-this.angle);
 };
 
 RotateAction.prototype.redoAction = function() {
-	this.elem.data("bbox").rotateAll(this.angle);
+	metadata[this.elem.attr("id").slice(1)].rotateAll(this.angle);
 };

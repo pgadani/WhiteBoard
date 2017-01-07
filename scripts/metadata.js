@@ -49,13 +49,14 @@ var SelectionBox = function(currPath) {
 	c8.addClass("recirc c8");
 	c9.addClass("recirc c9");
 	c10.addClass("recirc c10");
-
+	var pk = currPath.attr("id").slice(1);
 	this.box = svgSnap
 			.rect(x,y,width, height)
 			.attr({
 				fill: "none",
 				strokeWidth: "1px",
-				stroke: "gray"
+				stroke: "gray",
+				id: "b"+pk
 			})
 			.remove(); // don't put it in the canvas
 	this.recirc = svgSnap.g()
@@ -63,9 +64,9 @@ var SelectionBox = function(currPath) {
 			.attr({
 				fill: "black",
 				strokeWidth: "1px",
-				stroke: "gray"
+				stroke: "gray",
+				id: "r"+pk
 			})
-			.data("path", currPath)
 			.remove(); // don't put it in the canvas
 	this.center = [x+width/2, y+height/2];
 	this.currPath = currPath;

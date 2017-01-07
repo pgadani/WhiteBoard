@@ -6,9 +6,10 @@ var boardActive = true; 	// false when the spectrum selector is open so users ca
 var selectedElements = [];
 var copiedElements = [];
 var metadata = {};			// stores bbox data for each path
+var pk = 0;					// counter used to assign unique keys to paths
 
 var multiInfo;
-var oldColors;				// store this in the metadata as well...?
+var oldColors;
 
 var transformType = {
 	TRANSLATE: 0,
@@ -107,9 +108,9 @@ function toolbarSetup() {
 	var del = function() {
 		actionsToUndo.push(new PathAction(selectedElements.slice(), null));
 		// hide bbox AND delete each item
-		selectedElements.forEach(function(item) {
-			item.data("bbox").hide();
-			item.remove();
+		selectedElements.forEach(function(elem) {
+			metadata[elem.attr("id").slice(1)].hide();
+			elem.remove();
 		});
 		selectedElements = [];
 	};
@@ -138,10 +139,10 @@ function toolbarSetup() {
 		//paste the copied elements, add their bboxes, and select them
 		pointerSelect();
 		clearSelectedElements();
-		copiedElements.forEach(function(item) {
-			svgSnap.append(item);
-			item.data("bbox").show();
-			selectedElements.push(item);
+		copiedElements.forEach(function(elem) {
+			svgSnap.append(elem);
+			metadata[elem.attr("id").slice(1)].show();
+			selectedElements.push(elem);
 		});
 		//not using a copy of the array since we never remove anything from it
 		actionsToUndo.push(new PathAction(null, copiedElements));
@@ -167,8 +168,8 @@ function toolbarSetup() {
 				clearSelectedElements();
 				//selecting all the elements within the svg, can't use * because of description and other children that can't be displayed
 				selectedElements = [].concat(svgSnap.selectAll("path").items, svgSnap.selectAll("circle").items);
-				selectedElements.forEach(function(item) {
-					item.data("bbox").show();
+				selectedElements.forEach(function(elem) {
+					metadata[elem.attr("id").slice(1)].show();
 				});
 				//switching to selecting pointer
 				pointerSelect();
@@ -256,7 +257,7 @@ window.onload = function() {
 	var isDown = false,
 		isMoved = false,
 		canvasX, canvasY,
-		path, elem, // the svg path element, the element at the user's mouse
+		path, // the svg path element, the element at the user's mouse
 		pInfo;	// the data inside the svg path element (xy coordinates)
 
 	// Mouse Event Handlers
@@ -283,37 +284,12 @@ window.onload = function() {
 		}
 		else if (currPointer===pointerType.SELECT) {
 			svg.style.cursor = "move";
-			elem = Snap.getElementByPoint(e.pageX, e.pageY);
-			console.log("ELEM  "+elem.id);
-			if (elem.data("bbox")) { // bbox so users can't select the bounding box circles
-				console.log("Select");
-				if (e.ctrlKey) {
-					// deselect if already selected, remove both bbox and elem
-					if (selectedElements.indexOf(elem)>=0) {
-						elem.data("bbox").hide();
-						selectedElements.splice(selectedElements.indexOf(elem),1);
-					}
-					// add it if it's not
-					else {
-						selectedElements.push(elem);
-					}
-				}
-				else if (selectedElements.indexOf(elem)===-1){
-					clearSelectedElements();
-					selectedElements.push(elem);
-				}
-				//no canvasXY since we only need differences in values
-				currTransform = {
-					type: transformType.TRANSLATE,
-					start: [e.pageX, e.pageY],
-					end: [e.pageX, e.pageY]
-				};
-			}
-			else if (elem.hasClass("recirc")) { // The selected element is a circle for a bbox
+			let elem = $(e.target);
+			if (elem.hasClass("recirc")) { // The selected element is a circle for a bbox
 				clearSelectedElements();
-				var selectedPath = elem.parent().data("path");
-				selectedPath.data("bbox").show();
-				selectedElements.push(selectedPath); // get the original path from the associate circle
+				let sBox = metadata[elem.parent().attr("id").slice(1)];
+				sBox.show();
+				selectedElements.push(sBox.currPath); // get the original path from the associate circle
 				if (elem.hasClass("c10")) { // For rotation
 					console.log("Start Rotate");
 					currTransform = {
@@ -322,6 +298,32 @@ window.onload = function() {
 						angle: 0
 					};
 				}
+			}
+			else if (elem.hasClass("drawn")) { // bbox so users can't select the bounding box circles
+				console.log("Select");
+				let sBox = metadata[elem.attr("id").slice(1)];
+				let index = selectedElements.indexOf(sBox.currPath);
+				if (e.ctrlKey) {
+					// deselect if already selected, remove both bbox and elem
+					if (index>=0) {
+						sBox.hide();
+						selectedElements.splice(index,1); // remove this element
+					}
+					// add it if it's not
+					else {
+						selectedElements.push(sBox.currPath);
+					}
+				}
+				else if (index===-1){
+					clearSelectedElements();
+					selectedElements.push(sBox.currPath);
+				}
+				//no canvasXY since we only need differences in values
+				currTransform = {
+					type: transformType.TRANSLATE,
+					start: [e.pageX, e.pageY],
+					end: [e.pageX, e.pageY]
+				};
 			}
 			else {
 				clearSelectedElements();
@@ -348,13 +350,13 @@ window.onload = function() {
 					var diffY = e.pageY - currTransform.end[1];
 					currTransform.end = [e.pageX, e.pageY];
 					selectedElements.forEach(function(elem) {
-						elem.data("bbox").translateAll(diffX, diffY);
+						metadata[elem.attr("id").slice(1)].translateAll(diffX, diffY);
 					});
 				}
 				else if (currTransform.type===transformType.ROTATE) {
 					//there should be exactly one selected element
 					var p = [canvasX, canvasY];
-					var bbox = selectedElements[0].data("bbox");
+					var bbox = metadata[selectedElements[0].attr("id").slice(1)];
 					var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
 					bbox.rotateAll(angle-currTransform.angle);
 					currTransform.angle = angle;
@@ -422,7 +424,7 @@ window.onload = function() {
 				else if (currTransform.type===transformType.ROTATE) {
 					//there should be exactly one selected element
 					var p = [canvasX, canvasY];
-					var bbox = selectedElements[0].data("bbox");
+					var bbox = metadata[selectedElements[0].attr("id").slice(1)];
 					var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
 					bbox.rotateAll(angle-currTransform.angle);
 					currTransform.angle = angle;
@@ -448,8 +450,8 @@ window.onload = function() {
 
 function clearSelectedElements() {
 	// remove all selected elements and remove bbox from canvas
-	selectedElements.forEach(function(item) {
-		item.data("bbox").hide();
+	selectedElements.forEach(function(elem) {
+		metadata[elem.attr("id").slice(1)].hide();
 	});
 	selectedElements = [];
 }
@@ -469,9 +471,11 @@ function angleBetween(p1, p2, p3) {
 }
 
 function addMetadata(currPath) {
-	var boxData = new SelectionBox(currPath);
-	// attach custom bbox to the path (not actually visible)
-	currPath.data("bbox", boxData);
+	currPath.addClass("drawn");
+	currPath.attr("id","p"+pk);
+	metadata[pk] = new SelectionBox(currPath);
+	// store bbox based on path's id
+	pk++;
 
 	// mouse listeners automatically check for correct mouse position
 	// handles the "preview" of a bbox
@@ -479,12 +483,12 @@ function addMetadata(currPath) {
 	.mouseover(function(e) {
 		//checking that no buttons are pressed so that the hovering box is not shown when dragging other elements
 		if (currPointer===pointerType.SELECT && e.buttons===0) {
-			this.data("bbox").show();
+			metadata[this.attr("id").slice(1)].show();
 		}
 	})
 	.mouseout(function() {
 		if (selectedElements.indexOf(this)===-1) {
-			this.data("bbox").hide();
+			metadata[this.attr("id").slice(1)].hide();
 		}
 	});
 }
