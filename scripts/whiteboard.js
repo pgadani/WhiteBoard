@@ -1,14 +1,20 @@
 var svgSnap;				// Snap's reference to svg element (basically the canvas)
+var svgDiv;					// For div of svg, global for offset
 var selectedColor = "#000";
+var thickness;				// element holding the path width
 var boardActive = true; 	// false when the spectrum selector is open so users can click out of it
 var selectedElements = [];
 var copiedElements = [];
+var metadata = {};			// stores bbox data for each path
+
+var multiInfo;
+var oldColors;				// store this in the metadata as well...?
 
 var transformType = {
 	TRANSLATE: 0,
 	ROTATE: 1
 };
-var currTransform; //will store type of transformation and associated data like beginning point or angle
+var currTransform;			// will store type of transformation and associated data like beginning point or angle
 
 var pointerType = {
 	DRAW: 0,
@@ -17,22 +23,9 @@ var pointerType = {
 };
 var currPointer = pointerType.DRAW;
 
-var thickness;				// element holding the path width
-
 // Stacks to remember actions for undo/redo
 var actionsToUndo = [];
 var actionsToRedo = [];
-
-// For div of svg, global for offset
-var svgDiv;
-
-function clearSelectedElements() {
-	// remove all selected elements and remove bbox from canvas
-	selectedElements.forEach(function(item) {
-		item.data("bbox").hide();
-	});
-	selectedElements = [];
-}
 
 function reportError() {
 	// just in case the canvas doesn't show
@@ -136,7 +129,7 @@ function toolbarSetup() {
 			// var clone = item.clone();
 			var clone = svgSnap.el(item.type); //create a new element of the same type
 			clone.attr(item.attr()); //copy all the attributes like path and stroke
-			addSelectionBox(clone);
+			addMetadata(clone);
 			clone.remove();
 			copiedElements.push(clone);
 		});
@@ -222,46 +215,8 @@ function toolbarSetup() {
 	select.addEventListener("click", pointerSelect);
 }
 
-function angleBetween(p1, p2, p3) {
-	// 1 is the starting point, 2 is the center, 3 is the end
-	// Uses a rotation matrix to position one vector on the x-axis
-	// The rotation of x,y is [x, y; -y, x] (makes the second coordinate 0)
-	// After the rotation, the angle is found with atan2
-	var x21 = p2[0]-p1[0];
-	var y21 = p2[1]-p1[1];
-	var x32 = p3[0]-p2[0];
-	var y32 = p3[1]-p2[1];
-	var dot = x21*x32 + y21*y32;
-	var cross = x21*y32 - x32*y21;
-	return Math.atan2(cross, dot);
-}
-
-function addSelectionBox(currPath) {
-	var boxData = new SelectionBox(currPath);
-	// attach custom bbox to the path (not actually visible)
-	currPath.data("bbox", boxData);
-	// attach the path to the bbox to get the path from a bbox circle
-	// boxData.recirc.data("path", currPath);
-
-	// mouse listeners automatically check for correct mouse position
-	// handles the "preview" of a bbox
-	currPath
-	.mouseover(function(e) {
-		//checking that no buttons are pressed so that the hovering box is not shown when dragging other elements
-		if (currPointer===pointerType.SELECT && e.buttons===0) {
-			this.data("bbox").show();
-		}
-	})
-	.mouseout(function() {
-		if (selectedElements.indexOf(this)===-1) {
-			this.data("bbox").hide();
-		}
-	});
-}
-
 window.onload = function() {
 	toolbarSetup();
-
 	//disabling dragging since firefox has glitches with dragging svg elements
 	document.body.ondragstart = function() {
 		return false;
@@ -312,37 +267,25 @@ window.onload = function() {
 		// e is global coordinates, svgDiv is the canvas top left corner
 		canvasX = e.pageX - svgDiv.offsetLeft;
 		canvasY = e.pageY - svgDiv.offsetTop;
-		if (currPointer===pointerType.DRAW) {
+		if (currPointer===pointerType.DRAW || currPointer===pointerType.ERASE) {
+			var color = (currPointer===pointerType.DRAW) ? selectedColor:"white";
 			isMoved = false;
 			// M starts a path
 			pInfo = "M"+canvasX+","+canvasY;
 			path = svgSnap.path(pInfo);
 			path.attr({
 				strokeWidth: thickness.value,
-				stroke: selectedColor,
+				stroke: color,
 				fill: "none",
 				strokeLinecap: "round",	// shape at ends of paths (for smoothing)
 				strokeLinejoin: "round"	// shape at corner of paths (for smoothing)
 			});
 		}
-		else if (currPointer===pointerType.ERASE) {
-			isMoved = false;
-			// M starts a path
-			pInfo = "M"+canvasX+","+canvasY;
-			path = svgSnap.path(pInfo);
-			path.attr({
-				strokeWidth: thickness.value,
-				stroke: "white",
-				fill: "none",
-				strokeLinecap: "round",	// shape at ends of paths (for smoothing)
-				strokeLinejoin: "round"	// shape at corner of paths (for smoothing)
-			});
-		}
-		else if (currPointer===pointerType.SELECT) {
+		else { // select
 			svg.style.cursor = "move";
 			elem = Snap.getElementByPoint(e.pageX, e.pageY);
 			console.log("ELEM  "+elem.id);
-			if (elem.data("bbox")) { //bbox so users can't select the bounding box circles
+			if (elem.data("bbox")) { // bbox so users can't select the bounding box circles
 				console.log("Select");
 				if (e.ctrlKey) {
 					// deselect if already selected, remove both bbox and elem
@@ -366,12 +309,12 @@ window.onload = function() {
 					end: [e.pageX, e.pageY]
 				};
 			}
-			else if (elem.data("ctype")) { // The selected element is a circle for a bbox
+			else if (elem.hasClass("recirc")) { // The selected element is a circle for a bbox
 				clearSelectedElements();
 				var selectedPath = elem.parent().data("path");
 				selectedPath.data("bbox").show();
 				selectedElements.push(selectedPath); // get the original path from the associate circle
-				if (elem.data("ctype") == 10) { // For rotation
+				if (elem.hasClass("c10")) { // For rotation
 					console.log("Start Rotate");
 					currTransform = {
 						type: transformType.ROTATE,
@@ -451,7 +394,7 @@ window.onload = function() {
 
 			if (isMoved || e.type!="touchend") {
 				// create a custom bbox now that the path has stopped moving
-				addSelectionBox(path);
+				addMetadata(path);
 
 				// PathAction takes a list of paths
 				actionsToUndo.push(new PathAction(null, [path]));
@@ -469,7 +412,7 @@ window.onload = function() {
 			}
 
 			// create a custom bbox now that the path has stopped moving
-			addSelectionBox(path);
+			addMetadata(path);
 
 			// PathAction takes a list of paths
 			actionsToUndo.push(new PathAction(null, [path]));
@@ -525,8 +468,49 @@ window.onload = function() {
 	//so that dragging the mouse off the board ends the movement
 };
 
-var multiInfo;
-var oldColors;
+
+function clearSelectedElements() {
+	// remove all selected elements and remove bbox from canvas
+	selectedElements.forEach(function(item) {
+		item.data("bbox").hide();
+	});
+	selectedElements = [];
+}
+
+function angleBetween(p1, p2, p3) {
+	// 1 is the starting point, 2 is the center, 3 is the end
+	// Uses a rotation matrix to position one vector on the x-axis
+	// The rotation of x,y is [x, y; -y, x] (makes the second coordinate 0)
+	// After the rotation, the angle is found with atan2
+	var x21 = p2[0]-p1[0];
+	var y21 = p2[1]-p1[1];
+	var x32 = p3[0]-p2[0];
+	var y32 = p3[1]-p2[1];
+	var dot = x21*x32 + y21*y32;
+	var cross = x21*y32 - x32*y21;
+	return Math.atan2(cross, dot);
+}
+
+function addMetadata(currPath) {
+	var boxData = new SelectionBox(currPath);
+	// attach custom bbox to the path (not actually visible)
+	currPath.data("bbox", boxData);
+
+	// mouse listeners automatically check for correct mouse position
+	// handles the "preview" of a bbox
+	currPath
+	.mouseover(function(e) {
+		//checking that no buttons are pressed so that the hovering box is not shown when dragging other elements
+		if (currPointer===pointerType.SELECT && e.buttons===0) {
+			this.data("bbox").show();
+		}
+	})
+	.mouseout(function() {
+		if (selectedElements.indexOf(this)===-1) {
+			this.data("bbox").hide();
+		}
+	});
+}
 
 function setPenColor(color) {
 	// set stroke in correct format
