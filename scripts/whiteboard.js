@@ -57,7 +57,7 @@ function toolbarSetup() {
 		return;
 	}
 
-	//toolbar setup, do this first so height calculations work out
+	// toolbar setup, do this first so height calculations work out
 	paletteInit();
 	color.value=selectedColor;
 
@@ -124,19 +124,20 @@ function toolbarSetup() {
 		}
 	};
 	var copySelectedElements = function() {
-		//clone each element in case it is later deleted/edited
+		// clone each element in case it is later deleted/edited
 		copiedElements = [];
 		selectedElemData.forEach(function(item) {
-			// var clone = item.clone();
-			var clone = svgSnap.el(item.path.type); //create a new element of the same type
-			clone.attr(item.path.attr()); //copy all the attributes like path and stroke
-			addMetadata(clone);
+			// var clone = svgSnap.clone(item.path); // for odd unknown reasons, this clones the parent svg as well...
+			var clone = svgSnap.el(item.path.type); // create a new element of the same type
+			clone.attr(item.path.attr()); // copy all the attributes like path and stroke
+			// copy the metadata from the original path
+			addMetadata(clone, item); // takes the item to copy
 			clone.remove();
 			copiedElements.push(clone);
 		});
 	};
 	var pasteSelectedElements = function() {
-		//paste the copied elements, add their bboxes, and select them
+		// paste the copied elements, add their bboxes, and select them
 		pointerSelect();
 		clearSelectedElements();
 		copiedElements.forEach(function(elem) {
@@ -166,14 +167,14 @@ function toolbarSetup() {
 		case "a":
 			if (evt.ctrlKey) {
 				clearSelectedElements();
-				//selecting all the elements within the svg, can't use * because of description and other children that can't be displayed
+				// selecting all the drawn paths/circles within the svg
 				let elems = svgSnap.selectAll(".drawn");
 				elems.forEach(function(elem) {
 					let bbox = metadata[elem.attr("id").slice(1)];
 					bbox.show();
 					selectedElemData.push(bbox);
 				});
-				//switching to selecting pointer
+				// switching to selecting pointer
 				pointerSelect();
 			}
 			break;
@@ -220,7 +221,7 @@ function toolbarSetup() {
 
 window.onload = function() {
 	toolbarSetup();
-	//disabling dragging since firefox has glitches with dragging svg elements
+	// disabling dragging since firefox has glitches with dragging svg elements
 	document.body.ondragstart = function() {
 		return false;
 	};
@@ -325,7 +326,7 @@ window.onload = function() {
 					sBox.show();
 					selectedElemData.push(sBox);
 				}
-				//no canvasXY since we only need differences in values
+				// no canvasXY since we only need differences in values
 				currTransform = {
 					type: transformType.TRANSLATE,
 					start: [e.pageX, e.pageY],
@@ -352,7 +353,7 @@ window.onload = function() {
 			}
 			else if (currPointer===pointerType.SELECT && currTransform) {
 				if (currTransform.type===transformType.TRANSLATE) {
-					//no canvasXY since we only need differences in values
+					// no canvasXY since we only need differences in values
 					var diffX = e.pageX - currTransform.end[0];
 					var diffY = e.pageY - currTransform.end[1];
 					currTransform.end = [e.pageX, e.pageY];
@@ -361,7 +362,7 @@ window.onload = function() {
 					});
 				}
 				else if (currTransform.type===transformType.ROTATE) {
-					//there should be exactly one selected element
+					// there should be exactly one selected element
 					var p = [canvasX, canvasY];
 					var angle = angleBetween(currTransform.start, selectedElemData[0].center, p)*180/Math.PI+180;
 					selectedElemData[0].rotateAll(angle-currTransform.angle);
@@ -422,12 +423,12 @@ window.onload = function() {
 					// add an action only if the element actually moved
 					if (selectedElemData.length>0 && (changeX!==0 || changeY!==0)) {
 						actionsToUndo.push(new TranslateAction(selectedElemData.slice(), changeX, changeY));
-						//copy selectedElements in case it is later edited
+						// copy selectedElements in case it is later edited
 						actionsToRedo = [];
 					}
 				}
 				else if (currTransform.type===transformType.ROTATE) {
-					//there should be exactly one selected element
+					// there should be exactly one selected element
 					var p = [canvasX, canvasY];
 					var angle = angleBetween(currTransform.start, selectedElemData[0].center, p)*180/Math.PI+180;
 					selectedElemData[0].rotateAll(angle-currTransform.angle);
@@ -448,7 +449,7 @@ window.onload = function() {
 			endMovement(e);
 		}
 	});
-	//so that dragging the mouse off the board ends the movement
+	// so that dragging the mouse off the board ends the movement
 };
 
 
@@ -474,10 +475,10 @@ function angleBetween(p1, p2, p3) {
 	return Math.atan2(cross, dot);
 }
 
-function addMetadata(currPath) {
+function addMetadata(currPath, copyData) {
 	currPath.addClass("drawn");
 	currPath.attr("id","p"+pk);
-	metadata[pk] = new SelectionBox(currPath);
+	metadata[pk] = new SelectionBox(currPath, copyData);
 	// store bbox based on path's id
 	pk++;
 
@@ -485,7 +486,7 @@ function addMetadata(currPath) {
 	// handles the "preview" of a bbox
 	currPath
 	.mouseover(function(e) {
-		//checking that no buttons are pressed so that the hovering box is not shown when dragging other elements
+		// checking that no buttons are pressed so that the hovering box is not shown when dragging other elements
 		if (currPointer===pointerType.SELECT && e.buttons===0) {
 			metadata[this.attr("id").slice(1)].show();
 		}
