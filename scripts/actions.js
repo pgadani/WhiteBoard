@@ -2,6 +2,7 @@
 // Each action is considered a "class" with
 // two required methods: redoAction and undoAction
 
+// prev and post are elem data
 var PathAction = function(prev, post) {
 	this.prev = prev;
 	this.post = post;
@@ -10,14 +11,14 @@ var PathAction = function(prev, post) {
 PathAction.prototype.undoAction = function() {
 	if (this.prev) {
 		this.prev.forEach(function(item) {
-			svgSnap.append(item);
+			svgSnap.append(item.path);
 		});
 	}
 
 	if (this.post) {
 		this.post.forEach(function(item) {
-			metadata[item.attr("id").slice(1)].hide();
-			item.remove();
+			item.hide();
+			item.path.remove();
 		});
 	}
 };
@@ -25,20 +26,21 @@ PathAction.prototype.undoAction = function() {
 PathAction.prototype.redoAction = function() {
 	if (this.prev) {
 		this.prev.forEach(function(item) {
-			metadata[item.attr("id").slice(1)].hide();
-			item.remove();
+			item.hide();
+			item.path.remove();
 		});
 	}
 
 	if (this.post) {
 		this.post.forEach(function(item) {
-			svgSnap.append(item);
+			svgSnap.append(item.path);
 		});
 	}
 };
 
-var TranslateAction = function(elems, changeX, changeY) {
-	this.elems = elems;
+// items are elem data
+var TranslateAction = function(items, changeX, changeY) {
+	this.items = items;
 	this.changeX = changeX;
 	this.changeY = changeY;
 };
@@ -46,9 +48,9 @@ var TranslateAction = function(elems, changeX, changeY) {
 TranslateAction.prototype.undoAction = function() {
 	var changeX = this.changeX;
 	var changeY = this.changeY;
-	if (this.elems) {
-		this.elems.forEach(function(elem) {
-			metadata[elem.attr("id").slice(1)].translateAll(-changeX, -changeY);
+	if (this.items) {
+		this.items.forEach(function(item) {
+			item.translateAll(-changeX, -changeY);
 		});
 	}
 };
@@ -56,14 +58,14 @@ TranslateAction.prototype.undoAction = function() {
 TranslateAction.prototype.redoAction = function() {
 	var changeX = this.changeX;
 	var changeY = this.changeY;
-	if (this.elems) {
-		this.elems.forEach(function(elem) {
-			metadata[elem.attr("id").slice(1)].translateAll(changeX, changeY);
+	if (this.items) {
+		this.items.forEach(function(item) {
+			item.translateAll(changeX, changeY);
 		});
 	}
 };
 
-// for color changes
+// for color changes, elems are paths (not metadata)
 var ColorAction = function(elems) {
 	this.elems = elems;
 };
@@ -90,16 +92,16 @@ ColorAction.prototype.redoAction = function() {
 	});
 };
 
-// for rotations
-var RotateAction = function(elem, angle) {
-	this.elem = elem;
+// for rotations, item is elem data
+var RotateAction = function(item, angle) {
+	this.item = item;
 	this.angle = angle;
 };
 
 RotateAction.prototype.undoAction = function() {
-	metadata[this.elem.attr("id").slice(1)].rotateAll(-this.angle);
+	this.item.rotateAll(-this.angle);
 };
 
 RotateAction.prototype.redoAction = function() {
-	metadata[this.elem.attr("id").slice(1)].rotateAll(this.angle);
+	this.item.rotateAll(this.angle);
 };

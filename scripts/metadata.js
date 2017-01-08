@@ -69,7 +69,7 @@ var SelectionBox = function(currPath) {
 			})
 			.remove(); // don't put it in the canvas
 	this.center = [x+width/2, y+height/2];
-	this.currPath = currPath;
+	this.path = currPath;
 };
 
 SelectionBox.prototype.show = function() {
@@ -87,8 +87,8 @@ SelectionBox.prototype.hide = function() {
 SelectionBox.prototype.translateAll = function(transX, transY) {
 	var transM = new Snap.Matrix();
 	transM.translate(transX, transY);
-	transM.add(this.currPath.transform().localMatrix);
-	this.currPath.transform(transM);
+	transM.add(this.path.transform().localMatrix);
+	this.path.transform(transM);
 	this.box.transform(transM);
 	this.recirc.transform(transM);
 	this.center = [this.center[0]+transX, this.center[1]+transY];
@@ -97,8 +97,8 @@ SelectionBox.prototype.translateAll = function(transX, transY) {
 SelectionBox.prototype.rotateAll = function(angle) {
 	var transM = new Snap.Matrix();
 	transM.rotate(angle, this.center[0], this.center[1]);
-	transM.add(this.currPath.transform().localMatrix);
-	this.currPath.transform(transM);
+	transM.add(this.path.transform().localMatrix);
+	this.path.transform(transM);
 	this.box.transform(transM);
 	this.recirc.transform(transM);
 };

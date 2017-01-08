@@ -3,7 +3,7 @@ var svgDiv;					// For div of svg, global for offset
 var selectedColor = "#000";
 var thickness;				// element holding the path width
 var boardActive = true; 	// false when the spectrum selector is open so users can click out of it
-var selectedElements = [];
+var selectedElemData = [];
 var copiedElements = [];
 var metadata = {};			// stores bbox data for each path
 var pk = 0;					// counter used to assign unique keys to paths
@@ -106,13 +106,13 @@ function toolbarSetup() {
 		clearSelectedElements();
 	};
 	var del = function() {
-		actionsToUndo.push(new PathAction(selectedElements.slice(), null));
+		actionsToUndo.push(new PathAction(selectedElemData.slice(), null));
 		// hide bbox AND delete each item
-		selectedElements.forEach(function(elem) {
-			metadata[elem.attr("id").slice(1)].hide();
-			elem.remove();
+		selectedElemData.forEach(function(item) {
+			item.hide();
+			item.path.remove();
 		});
-		selectedElements = [];
+		selectedElemData = [];
 	};
 	var pointerSelect = function() {
 		currPointer = pointerType.SELECT;
@@ -126,10 +126,10 @@ function toolbarSetup() {
 	var copySelectedElements = function() {
 		//clone each element in case it is later deleted/edited
 		copiedElements = [];
-		selectedElements.forEach(function(item) {
+		selectedElemData.forEach(function(item) {
 			// var clone = item.clone();
-			var clone = svgSnap.el(item.type); //create a new element of the same type
-			clone.attr(item.attr()); //copy all the attributes like path and stroke
+			var clone = svgSnap.el(item.path.type); //create a new element of the same type
+			clone.attr(item.path.attr()); //copy all the attributes like path and stroke
 			addMetadata(clone);
 			clone.remove();
 			copiedElements.push(clone);
@@ -141,15 +141,15 @@ function toolbarSetup() {
 		clearSelectedElements();
 		copiedElements.forEach(function(elem) {
 			svgSnap.append(elem);
-			metadata[elem.attr("id").slice(1)].show();
-			selectedElements.push(elem);
+			let bbox = metadata[elem.attr("id").slice(1)];
+			bbox.show();
+			selectedElemData.push(bbox);
 		});
-		//not using a copy of the array since we never remove anything from it
-		actionsToUndo.push(new PathAction(null, copiedElements));
-		//reclone copied elements to allow for pasting multiple times
+		// not using a copy of the array since we never remove anything from it
+		actionsToUndo.push(new PathAction(null, selectedElemData.slice()));
+		// reclone copied elements to allow for pasting multiple times
 		copySelectedElements();
 	};
-
 
 	undoButton.addEventListener("click", undo);
 	redoButton.addEventListener("click", redo);
@@ -167,9 +167,11 @@ function toolbarSetup() {
 			if (evt.ctrlKey) {
 				clearSelectedElements();
 				//selecting all the elements within the svg, can't use * because of description and other children that can't be displayed
-				selectedElements = [].concat(svgSnap.selectAll("path").items, svgSnap.selectAll("circle").items);
-				selectedElements.forEach(function(elem) {
-					metadata[elem.attr("id").slice(1)].show();
+				let elems = svgSnap.selectAll(".drawn");
+				elems.forEach(function(elem) {
+					let bbox = metadata[elem.attr("id").slice(1)];
+					bbox.show();
+					selectedElemData.push(bbox);
 				});
 				//switching to selecting pointer
 				pointerSelect();
@@ -262,6 +264,7 @@ window.onload = function() {
 
 	// Mouse Event Handlers
 	var beginMovement = function(e) {
+		console.log(e.type);
 		// if the user is selecting a color, don't draw
 		if (!boardActive) return;
 		isDown = true;
@@ -289,7 +292,7 @@ window.onload = function() {
 				clearSelectedElements();
 				let sBox = metadata[elem.parent().attr("id").slice(1)];
 				sBox.show();
-				selectedElements.push(sBox.currPath); // get the original path from the associate circle
+				selectedElemData.push(sBox); // get the original path from the associate circle
 				if (elem.hasClass("c10")) { // For rotation
 					console.log("Start Rotate");
 					currTransform = {
@@ -302,21 +305,23 @@ window.onload = function() {
 			else if (elem.hasClass("drawn")) { // bbox so users can't select the bounding box circles
 				console.log("Select");
 				let sBox = metadata[elem.attr("id").slice(1)];
-				let index = selectedElements.indexOf(sBox.currPath);
+				let index = selectedElemData.indexOf(sBox);
 				if (e.ctrlKey) {
 					// deselect if already selected, remove both bbox and elem
 					if (index>=0) {
 						sBox.hide();
-						selectedElements.splice(index,1); // remove this element
+						selectedElemData.splice(index,1); // remove this element
 					}
 					// add it if it's not
 					else {
-						selectedElements.push(sBox.currPath);
+						sBox.show();
+						selectedElemData.push(sBox);
 					}
 				}
 				else if (index===-1){
 					clearSelectedElements();
-					selectedElements.push(sBox.currPath);
+					sBox.show();
+					selectedElemData.push(sBox);
 				}
 				//no canvasXY since we only need differences in values
 				currTransform = {
@@ -349,16 +354,15 @@ window.onload = function() {
 					var diffX = e.pageX - currTransform.end[0];
 					var diffY = e.pageY - currTransform.end[1];
 					currTransform.end = [e.pageX, e.pageY];
-					selectedElements.forEach(function(elem) {
-						metadata[elem.attr("id").slice(1)].translateAll(diffX, diffY);
+					selectedElemData.forEach(function(item) {
+						item.translateAll(diffX, diffY);
 					});
 				}
 				else if (currTransform.type===transformType.ROTATE) {
 					//there should be exactly one selected element
 					var p = [canvasX, canvasY];
-					var bbox = metadata[selectedElements[0].attr("id").slice(1)];
-					var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
-					bbox.rotateAll(angle-currTransform.angle);
+					var angle = angleBetween(currTransform.start, selectedElemData[0].center, p)*180/Math.PI+180;
+					selectedElemData[0].rotateAll(angle-currTransform.angle);
 					currTransform.angle = angle;
 				}
 			}
@@ -375,7 +379,6 @@ window.onload = function() {
 			canvasX = e.changedTouches[0].pageX - svgDiv.offsetLeft;
 			canvasY = e.changedTouches[0].pageY - svgDiv.offsetTop;
 		}
-		console.log(e.type);
 		if ( (currPointer===pointerType.DRAW || currPointer===pointerType.ERASE) && path) { // When the user wants to draw
 			var color = (currPointer===pointerType.DRAW) ? selectedColor:"white";
 			if (!isMoved && e.type != "touchend") {
@@ -390,10 +393,10 @@ window.onload = function() {
 
 			if (isMoved || e.type!="touchend") {
 				// create a custom bbox now that the path has stopped moving
-				addMetadata(path);
+				let bbox = addMetadata(path);
 
 				// PathAction takes a list of paths
-				actionsToUndo.push(new PathAction(null, [path]));
+				actionsToUndo.push(new PathAction(null, [bbox]));
 				// forget any previously undone actions
 				actionsToRedo = [];
 			}
@@ -415,8 +418,8 @@ window.onload = function() {
 						changeY = e.pageY - currTransform.start[1];
 					}
 					// add an action only if the element actually moved
-					if (selectedElements.length>0 && (changeX!==0 || changeY!==0)) {
-						actionsToUndo.push(new TranslateAction(selectedElements.slice(), changeX, changeY));
+					if (selectedElemData.length>0 && (changeX!==0 || changeY!==0)) {
+						actionsToUndo.push(new TranslateAction(selectedElemData.slice(), changeX, changeY));
 						//copy selectedElements in case it is later edited
 						actionsToRedo = [];
 					}
@@ -424,11 +427,10 @@ window.onload = function() {
 				else if (currTransform.type===transformType.ROTATE) {
 					//there should be exactly one selected element
 					var p = [canvasX, canvasY];
-					var bbox = metadata[selectedElements[0].attr("id").slice(1)];
-					var angle = angleBetween(currTransform.start, bbox.center, p)*180/Math.PI+180;
-					bbox.rotateAll(angle-currTransform.angle);
+					var angle = angleBetween(currTransform.start, selectedElemData[0].center, p)*180/Math.PI+180;
+					selectedElemData[0].rotateAll(angle-currTransform.angle);
 					currTransform.angle = angle;
-					actionsToUndo.push(new RotateAction(selectedElements[0], currTransform.angle));
+					actionsToUndo.push(new RotateAction(selectedElemData[0], currTransform.angle));
 					actionsToRedo = [];
 				}
 			}
@@ -450,10 +452,10 @@ window.onload = function() {
 
 function clearSelectedElements() {
 	// remove all selected elements and remove bbox from canvas
-	selectedElements.forEach(function(elem) {
-		metadata[elem.attr("id").slice(1)].hide();
+	selectedElemData.forEach(function(item) {
+		item.hide();
 	});
-	selectedElements = [];
+	selectedElemData = [];
 }
 
 function angleBetween(p1, p2, p3) {
@@ -487,10 +489,12 @@ function addMetadata(currPath) {
 		}
 	})
 	.mouseout(function() {
-		if (selectedElements.indexOf(this)===-1) {
-			metadata[this.attr("id").slice(1)].hide();
+		let bbox = metadata[this.attr("id").slice(1)];
+		if (selectedElemData.indexOf(bbox)===-1) {
+			bbox.hide();
 		}
 	});
+	return metadata[pk-1];
 }
 
 function setPenColor(color) {
@@ -498,17 +502,12 @@ function setPenColor(color) {
 	selectedColor = color.toRgbString();
 	// need to pass every color into ColorAction
 	multiInfo = [];
-	selectedElements.forEach(function(item) {
+	selectedElemData.forEach(function(item) {
 		// get old color, set new color using the correct attribute
-		var info;
-		if (item.type == "path") {
-			info = [item, oldColors[item.id], selectedColor];
-			item.attr("stroke", selectedColor);
-		}
-		else if (item.type == "circle") {
-			info = [item, oldColors[item.id], selectedColor];
-			item.attr("fill", selectedColor);
-		}
+		let info;
+		let colType = (item.path.type == "path") ? "stroke" : "fill";
+		info = [item.path, oldColors[item.path.attr("id")], selectedColor];
+		item.path.attr(colType, selectedColor);
 		multiInfo.push(info);
 	});
 }
@@ -533,14 +532,10 @@ function paletteInit() {
 			boardActive = false;
 			multiInfo = [];
 			oldColors = [];
-			if (selectedElements.length > 0) {
-				selectedElements.forEach(function (item) {
-					if (item.type == "path") {
-						oldColors[item.id] = item.attr("stroke");
-					}
-					else if (item.type == "circle") {
-						oldColors[item.id] = item.attr("fill");
-					}
+			if (selectedElemData.length > 0) {
+				selectedElemData.forEach(function (item) {
+					let colType = (item.path.type == "path") ? "stroke" : "fill";
+					oldColors[item.path.attr("id")] = item.path.attr(colType);
 				});
 			}
 		},
@@ -548,7 +543,7 @@ function paletteInit() {
 		},
 		hide: function () {
 			boardActive = true;
-			if (selectedElements.length > 0 && multiInfo.length > 0) {
+			if (selectedElemData.length > 0 && multiInfo.length > 0) {
 				actionsToUndo.push(new ColorAction(multiInfo));
 			}
 		},
