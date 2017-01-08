@@ -264,7 +264,6 @@ window.onload = function() {
 
 	// Mouse Event Handlers
 	var beginMovement = function(e) {
-		console.log(e.type);
 		// if the user is selecting a color, don't draw
 		if (!boardActive) return;
 		isDown = true;
@@ -300,6 +299,9 @@ window.onload = function() {
 						start: [canvasX, canvasY],
 						angle: 0
 					};
+				}
+				else {
+					currTransform = null; // eventually add resizing
 				}
 			}
 			else if (elem.hasClass("drawn")) { // bbox so users can't select the bounding box circles

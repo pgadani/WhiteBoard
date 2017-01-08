@@ -1,5 +1,8 @@
 var SelectionBox = function(currPath) {
-	var minBBoxSize = 16;
+	var minBBoxSize = 40,
+		len = 30,		// distance between border box and rotation circle
+		padding = len/2,
+		radius = 4;		// radius of resizing circles
 	var bbox = currPath.getBBox(),
 		x = bbox.x,
 		y = bbox.y,
@@ -7,26 +10,42 @@ var SelectionBox = function(currPath) {
 		height = bbox.height;
 
 	if (currPath.type === "path") {
-		//not a circle, which has the correct bbox for the stroke thickness
+		// not a circle, which has the correct bbox for the stroke thickness
 		let offset = parseInt(currPath.attr("strokeWidth"),10)/2;
-		x -= offset;
-		y -= offset;
 		width += 2*offset;
 		height += 2*offset;
+		// creating a larger bbox for small elements to make resizing/rotating easier
+		if (width < minBBoxSize) {
+			x-=minBBoxSize/2;
+			width = minBBoxSize;
+		}
+		else {
+			x-=offset;
+		}
+		if (height < minBBoxSize) {
+			y-=minBBoxSize/2;
+			height = minBBoxSize;
+		}
+		else {
+			y-=offset;
+		}
 	}
-
-	//creating a larger bbox for small elements to make resizing/rotating easier
-	if (width < minBBoxSize) {
-		x-=minBBoxSize/2;
-		width+=minBBoxSize;
+	else {
+		if (width < minBBoxSize) {
+			x-=(minBBoxSize-width)/2;
+			width = minBBoxSize;
+		}
+		if (height < minBBoxSize) {
+			y-=(minBBoxSize-height)/2;
+			height = minBBoxSize;
+		}
 	}
-	if (height < minBBoxSize) {
-		y-=minBBoxSize/2;
-		height+=minBBoxSize;
-	}
+	x-=padding;
+	y-=padding;
+	width+=2*padding;
+	height+=2*padding;
 
 	// drag circles in the middle of each side and at each corner
-	var radius = 10;
 	var c1 = svgSnap.circle(x, y, radius),
 		c2 = svgSnap.circle(x+width/2, y, radius),
 		c3 = svgSnap.circle(x+width, y, radius),
@@ -36,10 +55,12 @@ var SelectionBox = function(currPath) {
 		c8 = svgSnap.circle(x, y+height, radius),
 		c9 = svgSnap.circle(x, y+height/2, radius),
 		// rotate circle above the top in the middle
-		c10 = svgSnap.circle(x+width/2, y-20, radius),
+		c10 = svgSnap.circle(x+width/2, y-len, radius),
 		// rotate circle has a line connecting to the box
-		l = svgSnap.path("M" + (x+width/2) + "," + (y-20) + "L" + (x+width/2) + "," + y);
+		l = svgSnap.path("M" + (x+width/2) + "," + (y-len) + "L" + (x+width/2) + "," + y),
 		// type of circle, 1 corresponds to c1, etc
+		rect = svgSnap.rect(x,y,width, height);
+
 	c1.addClass("recirc c1");
 	c2.addClass("recirc c2");
 	c3.addClass("recirc c3");
@@ -50,21 +71,21 @@ var SelectionBox = function(currPath) {
 	c9.addClass("recirc c9");
 	c10.addClass("recirc c10");
 	var pk = currPath.attr("id").slice(1);
-	this.box = svgSnap
-			.rect(x,y,width, height)
+	this.box = svgSnap.g()
+			.add(rect,l)
 			.attr({
 				fill: "none",
 				strokeWidth: "1px",
-				stroke: "gray",
-				id: "b"+pk
+				stroke: "gray"
+				// id: "b"+pk
 			})
 			.remove(); // don't put it in the canvas
 	this.recirc = svgSnap.g()
-			.add(c1, c2, c3, c4, c6, c7, c8, c9, c10, l)
+			.add(c1, c2, c3, c4, c6, c7, c8, c9, c10)
 			.attr({
 				fill: "black",
-				strokeWidth: "1px",
-				stroke: "gray",
+				strokeWidth: (len-radius)+"px",
+				stroke: "transparent", // transparent stroke around circle to increase clickable area
 				id: "r"+pk
 			})
 			.remove(); // don't put it in the canvas
