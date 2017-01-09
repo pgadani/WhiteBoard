@@ -11,9 +11,11 @@ var pk = 0;					// counter used to assign unique keys to paths
 var multiInfo;
 var oldColors;
 
+// come up with a better name for this...
 var transformType = {
 	TRANSLATE: 0,
-	ROTATE: 1
+	ROTATE: 1,
+	SELECT: 2
 };
 var currTransform;			// will store type of transformation and associated data like beginning point or angle
 
@@ -266,6 +268,7 @@ window.onload = function() {
 	// Mouse Event Handlers
 	var beginMovement = function(e) {
 		// if the user is selecting a color, don't draw
+		console.log(e.type);
 		if (!boardActive) return;
 		isDown = true;
 		// e is global coordinates, svgDiv is the canvas top left corner
@@ -288,22 +291,23 @@ window.onload = function() {
 		else if (currPointer===pointerType.SELECT) {
 			svg.style.cursor = "move";
 			let elem = $(e.target);
-			if (elem.hasClass("recirc")) { // The selected element is a circle for a bbox
+			if (elem.attr("id")==="board") {
 				clearSelectedElements();
-				let sBox = metadata[elem.parent().attr("id").slice(1)];
-				sBox.show();
-				selectedElemData.push(sBox); // get the original path from the associate circle
-				if (elem.hasClass("c10")) { // For rotation
-					console.log("Start Rotate");
-					currTransform = {
-						type: transformType.ROTATE,
-						start: [canvasX, canvasY],
-						angle: 0
-					};
-				}
-				else {
-					currTransform = null; // eventually add resizing
-				}
+				isDown = true;
+				// selecting elements with rectangle
+				let rect = svgSnap.rect(canvasX, canvasY, 0, 0)
+							.attr({
+								strokeWidth: "1px",
+								stroke: "rgb(100,100,100)",
+								fill: "rgba(180, 180, 180, 0.5)"
+							});
+				let svgRect = svg.createSVGRect();
+				currTransform = {
+					type: transformType.SELECT,
+					start: [canvasX, canvasY],
+					rect: rect,
+					svgRect: svgRect
+				};
 			}
 			else if (elem.hasClass("drawn")) { // bbox so users can't select the bounding box circles
 				console.log("Select");
@@ -333,6 +337,23 @@ window.onload = function() {
 					end: [e.pageX, e.pageY]
 				};
 			}
+			else if (elem.hasClass("recirc")) { // The selected element is a circle for a bbox
+				clearSelectedElements();
+				let sBox = metadata[elem.parent().attr("id").slice(1)];
+				sBox.show();
+				selectedElemData.push(sBox); // get the original path from the associate circle
+				if (elem.hasClass("c10")) { // For rotation
+					console.log("Start Rotate");
+					currTransform = {
+						type: transformType.ROTATE,
+						start: [canvasX, canvasY],
+						angle: 0
+					};
+				}
+				else {
+					currTransform = null; // eventually add resizing
+				}
+			}
 			else {
 				clearSelectedElements();
 				currTransform = null;
@@ -352,7 +373,40 @@ window.onload = function() {
 				path.attr({d: pInfo});
 			}
 			else if (currPointer===pointerType.SELECT && currTransform) {
-				if (currTransform.type===transformType.TRANSLATE) {
+				if (currTransform.type===transformType.SELECT) {
+					let x = currTransform.start[0],
+						y = currTransform.start[1],
+						width = canvasX - x,
+						height = canvasY - y;
+					if (width < 0) {
+						x = x + width;
+						width = -width;
+					}
+					if (height < 0) {
+						y = y + height;
+						height = -height;
+					}
+					currTransform.rect.attr({
+						x: x,
+						y: y,
+						width: width,
+						height: height
+					});
+					currTransform.svgRect.x = x;
+					currTransform.svgRect.y = y;
+					currTransform.svgRect.width = width;
+					currTransform.svgRect.height = height;
+					clearSelectedElements();
+					let intersections = svg.getIntersectionList(currTransform.svgRect, null);
+					for (let i of intersections) {
+						if (i.classList.contains("drawn")) {
+							let bbox = metadata[i.id.slice(1)];
+							selectedElemData.push(bbox);
+							bbox.show();
+						}
+					}
+				}
+				else if (currTransform.type===transformType.TRANSLATE) {
 					// no canvasXY since we only need differences in values
 					var diffX = e.pageX - currTransform.end[0];
 					var diffY = e.pageY - currTransform.end[1];
@@ -407,7 +461,10 @@ window.onload = function() {
 		else if (currPointer===pointerType.SELECT) { // When the user wants to select
 			svg.style.cursor = "pointer";
 			if (currTransform) {
-				if (currTransform.type===transformType.TRANSLATE) {
+				if (currTransform.type===transformType.SELECT) {
+					currTransform.rect.remove();
+				}
+				else if (currTransform.type===transformType.TRANSLATE) {
 					var changeX, changeY;
 					if (e.type==="touchend") {
 						// touch events can potentially have multiple points
