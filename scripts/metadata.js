@@ -90,7 +90,9 @@ var SelectionBox = function(currPath, copyData) {
 				})
 				.remove(); // don't put it in the canvas
 		this.center = [x+width/2, y+height/2];
-		this.path = currPath;
+		if (!svgSupport) {
+			this.boundingRect = currPath.node.getBoundingClientRect();
+		}
 	}
 	else {
 		let c1 = svgSnap.el("circle")
@@ -126,8 +128,8 @@ var SelectionBox = function(currPath, copyData) {
 					.attr("id", "r"+pk)
 					.remove();
 		this.center = copyData.center.slice();
-		this.path = currPath;
 	}
+	this.path = currPath;
 };
 
 SelectionBox.prototype.show = function() {
@@ -150,6 +152,9 @@ SelectionBox.prototype.translateAll = function(transX, transY) {
 	this.box.transform(transM);
 	this.recirc.transform(transM);
 	this.center = [this.center[0]+transX, this.center[1]+transY];
+	if (!svgSupport) {
+		this.boundingRect = this.path.node.getBoundingClientRect();
+	}
 };
 
 SelectionBox.prototype.rotateAll = function(angle) {
@@ -159,4 +164,7 @@ SelectionBox.prototype.rotateAll = function(angle) {
 	this.path.transform(transM);
 	this.box.transform(transM);
 	this.recirc.transform(transM);
+	if (!svgSupport) {
+		this.boundingRect = this.path.node.getBoundingClientRect();
+	}
 };

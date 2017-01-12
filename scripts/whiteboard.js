@@ -7,6 +7,7 @@ var selectedElemData = [];
 var copiedElements = [];
 var metadata = {};			// stores bbox data for each path
 var pk = 0;					// counter used to assign unique keys to paths
+var svgSupport = false;			// whether browser supports SVG methods like getIntersectionList
 
 var multiInfo;
 var oldColors;
@@ -245,6 +246,9 @@ window.onload = function() {
 		reportError();
 		return;
 	}
+	if (typeof svg.getIntersectionList === "function") {
+		svgSupport = true;
+	}
 
 	// Fill Window Width and Height
 	var toolHeight = toolBar.clientHeight,
@@ -298,8 +302,8 @@ window.onload = function() {
 				let rect = svgSnap.rect(canvasX, canvasY, 0, 0)
 							.attr({
 								strokeWidth: "1px",
-								stroke: "rgb(100,100,100)",
-								fill: "rgba(180, 180, 180, 0.5)"
+								stroke: "rgb(180,180,180)",
+								fill: "rgba(220, 220, 220, 0.5)"
 							});
 				let svgRect = svg.createSVGRect();
 				currTransform = {
@@ -397,12 +401,28 @@ window.onload = function() {
 					currTransform.svgRect.width = width;
 					currTransform.svgRect.height = height;
 					clearSelectedElements();
-					let intersections = svg.getIntersectionList(currTransform.svgRect, null);
-					for (let i of intersections) {
-						if (i.classList.contains("drawn")) {
-							let bbox = metadata[i.id.slice(1)];
-							selectedElemData.push(bbox);
-							bbox.show();
+					if (svgSupport) {
+						let intersections = svg.getIntersectionList(currTransform.svgRect, null);
+						for (let i of intersections) {
+							if (i.classList.contains("drawn")) {
+								let bbox = metadata[i.id.slice(1)];
+								selectedElemData.push(bbox);
+								bbox.show();
+							}
+						}
+					}
+					else {
+						// supports browsers without SVG 2.0 like Firefox
+						// use bboxes to estimate intersecting elements (implemented that way in Chrome/Safari already)
+						let elems = document.getElementsByClassName("drawn");
+						for (let e of elems) {
+							let bbox = metadata[e.id.slice(1)];
+							let r = bbox.boundingRect;
+							if ( ((r.left >= x && r.left <= x+width) || (r.left + r.width >= x && r.left + r.width <= x+width) || (x >= r.left && x <= r.left + r.width)) && ((r.top >= y && r.top <= y + height) || (r.top + r.height >= y && r.top + r.height <= y+height) || (y >= r.top && y <= r.top + r.height)) ) {
+								// bounding box intersects
+								selectedElemData.push(bbox);
+								bbox.show();
+							}
 						}
 					}
 				}
@@ -507,6 +527,13 @@ window.onload = function() {
 		}
 	});
 	// so that dragging the mouse off the board ends the movement
+};
+
+window.onbeforeunload = function(e) {
+	// this text doesn't seem to be shown but the browser shows its own warning
+	var dialogText = "Sure about leaving? Unsaved work will be lost";
+	e.returnValue = dialogText;
+	return dialogText;
 };
 
 
