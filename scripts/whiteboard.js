@@ -7,7 +7,7 @@ var selectedElemData = [];
 var copiedElements = [];
 var metadata = {};			// stores bbox data for each path
 var pk = 0;					// counter used to assign unique keys to paths
-var svgSupport = false;			// whether browser supports SVG methods like getIntersectionList
+var svgSupport = false;		// whether browser supports SVG methods like getIntersectionList
 
 var multiInfo;
 var oldColors;
@@ -418,7 +418,7 @@ window.onload = function() {
 						for (let e of elems) {
 							let bbox = metadata[e.id.slice(1)];
 							let r = bbox.boundingRect;
-							if ( ((r.left >= x && r.left <= x+width) || (r.left + r.width >= x && r.left + r.width <= x+width) || (x >= r.left && x <= r.left + r.width)) && ((r.top >= y && r.top <= y + height) || (r.top + r.height >= y && r.top + r.height <= y+height) || (y >= r.top && y <= r.top + r.height)) ) {
+							if (x+width >= r.left && r.left+r.width >= x && y+height >= r.top && r.top + r.height >= y) {
 								// bounding box intersects
 								selectedElemData.push(bbox);
 								bbox.show();
